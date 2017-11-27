@@ -20,7 +20,7 @@ double LeafNode::get_predict_value() {
     return predict_value;
 }
 
-void LeafNode::update_predict_value(vector<double> targets, BinomialDeviance* loss) {
+void LeafNode::update_predict_value(map<int, double> targets, BinomialDeviance* loss) {
     predict_value = loss->update_terminal_regions(targets, idset);
 }
 
