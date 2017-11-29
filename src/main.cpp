@@ -5,7 +5,7 @@ using namespace std;
 
 int main()
 {
-	char *filename = "..\\data\\traindata.xls";
+	char *filename = "./traindata.xls";
 
 	DataSet train_set(filename);
 
