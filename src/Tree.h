@@ -1,10 +1,4 @@
-//
-//  Tree.h
-//  GBDT
-//
-//  Created by 康锴 on 2017/11/25.
-//  Copyright © 2017年 康锴. All rights reserved.
-//
+
 
 #ifndef Tree_h
 #define Tree_h
