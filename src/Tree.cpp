@@ -65,7 +65,7 @@ Tree* construct_decision_tree(DataSet* dataset, std::vector<int> remainedSet, ma
         std::vector<int> selectedLeftIdSet;
         std::vector<int> selectedRightIdSet;
         for (auto attribute : attributes) {
-            std::vector<int> attrValues = dataset->get_distinct_valueset(attribute);
+            std::set<int> attrValues = dataset->get_distinct_valueset(attribute);
             for (auto attrValue : attrValues) {
                 std::vector<int> leftIdSet;
                 std::vector<int> rightIdSet;

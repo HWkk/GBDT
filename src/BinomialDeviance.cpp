@@ -2,8 +2,8 @@
 #include "BinomialDeviance.h"
 #include <cmath>
 
-vector<double> BinomialDeviance::compute_residual(DataSet* dataset, DataSet* subset, vector<double> f) {
-    vector<double> residual;
+map<int, double> BinomialDeviance::compute_residual(DataSet* dataset, DataSet* subset, vector<double> f) {
+    map<int, double> residual;
     for (auto id : subset->get_instances_idset()) {
         int y_i = dataset->get_instance(id)["label"];
         residual[id] = 2.0 * y_i / (1 + exp(2 * y_i * f[id]));
