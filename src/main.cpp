@@ -1,5 +1,6 @@
 #include <iostream>
 #include "data.h"
+#include "gbdt_class.h"
 
 using namespace std;
 
