@@ -7,7 +7,16 @@
 #include <vector>
 #include <string>
 #include "BinomialDeviance.h"
-using namespace std;
+#include <sstream>using namespace std;
+
+template < typename T > std::string to_string( const T& n )
+    {
+        std::ostringstream stm ;
+        stm << n ;
+        return stm.str() ;
+    }
+
+class BinomialDeviance;
 
 class LeafNode {
 public:
@@ -17,7 +26,7 @@ public:
     vector<int> get_idset();
     double get_predict_value();
     void update_predict_value(map<int, double> targets, BinomialDeviance* loss);
-    
+
 private:
     vector<int> idset;
     double predict_value;
