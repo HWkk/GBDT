@@ -1,3 +1,7 @@
+#ifndef DATASET_H
+#define DATASET_H
+
+
 #include <string>
 #include <map>
 #include <set>
@@ -20,7 +24,7 @@ public:
 			std::cerr << "Open " << filename << " failed" << std::endl;
 			exit(-1);
 		}
-			
+
 		// only have 1 sheet
 		sheet = file->GetWorksheet(size_t(0));
 		if (sheet == NULL)
@@ -115,3 +119,8 @@ private:
 
 	BasicExcelWorksheet *sheet;
 };
+
+
+
+#endif // DATASET_H
+
