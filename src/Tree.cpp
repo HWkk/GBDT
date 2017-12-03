@@ -1,10 +1,4 @@
-//
-//  Tree.cpp
-//  GBDT
-//
-//  Created by 康锴 on 2017/11/23.
-//  Copyright © 2017年 康锴. All rights reserved.
-//
+
 #include "Tree.h"
 #include <iostream>
 
@@ -61,8 +55,8 @@ double FriedmanMSE(vector<double>& left_values, vector<double>& right_values) {
     return double(weighted_n_left) * double(weighted_n_right) * diff * diff / double(weighted_n_left + weighted_n_right);
 }
 
-Tree* construct_decision_tree(DataSet* dataset, std::vector<int> remainedSet, map<int, double>targets, int depth,
-                              vector<LeafNode*> leaf_nodes, int max_depth, BinomialDeviance* loss) {
+Tree* construct_decision_tree(DataSet* dataset, std::vector<int> &remainedSet, map<int, double>targets, int depth,
+                              vector<LeafNode*> &leaf_nodes, int max_depth, BinomialDeviance* loss) {
     if (depth < max_depth) {
         std::vector<std::string> attributes = dataset->get_attributes();
         double mse = -1.0;
@@ -71,7 +65,7 @@ Tree* construct_decision_tree(DataSet* dataset, std::vector<int> remainedSet, ma
         std::vector<int> selectedLeftIdSet;
         std::vector<int> selectedRightIdSet;
         for (auto attribute : attributes) {
-            std::vector<int> attrValues = dataset->get_distinct_valueset(attribute);
+            std::set<int> attrValues = dataset->get_distinct_valueset(attribute);
             for (auto attrValue : attrValues) {
                 std::vector<int> leftIdSet;
                 std::vector<int> rightIdSet;

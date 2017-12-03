@@ -1,3 +1,6 @@
+#ifndef Data_h
+#define Data_h
+
 #include <string>
 #include <map>
 #include <set>
@@ -115,3 +118,5 @@ private:
 
 	BasicExcelWorksheet *sheet;
 };
+
+#endif

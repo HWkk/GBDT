@@ -1,12 +1,10 @@
-//
-//  LeafNode.cpp
-//  GBDT
-//
-//  Created by 康锴 on 2017/11/23.
-//  Copyright © 2017年 康锴. All rights reserved.
-//
+
 
 #include "LeafNode.h"
+
+#include <sstream>
+
+
 
 string LeafNode::describe() {
     return "{LeafNode" + to_string(get_predict_value()) + "}";
