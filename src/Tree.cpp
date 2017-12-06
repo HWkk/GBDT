@@ -3,7 +3,7 @@
 #include <iostream>
 
 double Tree::get_predict_value(map<string, int> instance) {
-        
+
     if(leaf_node != NULL) {
         return leaf_node->get_predict_value();
     }
