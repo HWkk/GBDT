@@ -62,6 +62,8 @@ public:
 						distinct_valueset[field_names[i]] = new intSet;
 				// read every instances
 				instances.push_back(construct_instance(line_cnt));
+
+				//printf("%d\n", (*instances[line_cnt])["label"]);
 			}
 		}
 

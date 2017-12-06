@@ -16,7 +16,6 @@ instanceMap* DataSet::construct_instance(int line_cnt)
 					}
 		(*instance)[field_name] = int(cell->GetDouble());
 		distinct_valueset[field_name]->insert(int(cell->GetDouble()));
-
 	}
 
 	return instance;
