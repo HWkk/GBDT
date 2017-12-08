@@ -31,6 +31,12 @@ public:
 	}
 	void fit(DataSet* dataset, vector<int> train_data)
 	{
+	    for (auto inst : dataset->instances)
+        {
+            int label = (*inst)["label"];
+            if (label == 0)
+                (*inst)["label"] = -1;
+        }
 		// binary-classification
 		this->loss = BinomialDeviance();
 		vector<double> f;
@@ -46,9 +52,9 @@ public:
 			std::vector<LeafNode*> leaf_pnodes;
 			map<int, double> targets = residual;
 			Tree* tree = construct_decision_tree(dataset, subset, targets, 0, leaf_pnodes, this->max_depth, &this->loss); //, this->split_points);
-			std::vector<LeafNode> leaf_nodes;            
-			for (LeafNode* p : leaf_pnodes) 
-			{ leaf_nodes.push_back(*p); }            
+			std::vector<LeafNode> leaf_nodes;
+			for (LeafNode* p : leaf_pnodes)
+			{ leaf_nodes.push_back(*p); }
 			this->trees[iter] = tree;
 			this->loss.update_f_value(f, tree, leaf_nodes, /*subset*/dataset, dataset, this->learn_rate);
 

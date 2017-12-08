@@ -1,10 +1,11 @@
 #include "BasicExcel.hpp"
+#include <string.h>
 
 namespace YCompoundFiles
 {
 /********************************** Start of Class Block *************************************/
 // PURPOSE: Manage a file by treating it as blocks of data of a certain size.
-Block::Block() : 
+Block::Block() :
 	blockSize_(512), fileSize_(0), indexEnd_(0),
 	filename_(0) {}
 
@@ -42,7 +43,7 @@ bool Block::Open(const wchar_t* filename, ios_base::openmode mode)
 	if (!file_.is_open()) return false;
 
 	mode_ = mode;
-	
+
 	// Calculate filesize
 	if (mode & ios_base::in)
 	{
@@ -57,9 +58,9 @@ bool Block::Open(const wchar_t* filename, ios_base::openmode mode)
 	else
 	{
 		this->Close();
-		return false;	
+		return false;
 	}
-	
+
 	// Calculate last index + 1
 	indexEnd_ = fileSize_/blockSize_ + (fileSize_ % blockSize_ ? 1 : 0);
 	return true;
@@ -71,9 +72,9 @@ bool Block::Close()
 {
 	file_.close();
 	file_.clear();
-	filename_.clear(); 
-	fileSize_ = 0; 
-	indexEnd_ = 0; 
+	filename_.clear();
+	fileSize_ = 0;
+	indexEnd_ = 0;
 	blockSize_ = 512;
 	return !file_.is_open();
 }
@@ -108,7 +109,7 @@ bool Block::Write(size_t index, const char* block)
 	if (!(mode_ & ios_base::out)) return false;
 	file_.seekp(index * blockSize_);
 	file_.write(block, blockSize_);
-	if (indexEnd_ <= index) 
+	if (indexEnd_ <= index)
 	{
 		indexEnd_ = index + 1;
 		fileSize_ += blockSize_;
@@ -116,7 +117,7 @@ bool Block::Write(size_t index, const char* block)
 	file_.close();
 	file_.clear();
 	file_.open(&*(filename_.begin()), mode_ | ios_base::binary);
-	return file_.is_open();		
+	return file_.is_open();
 }
 
 bool Block::Swap(size_t index1, size_t index2)
@@ -128,16 +129,16 @@ bool Block::Swap(size_t index1, size_t index2)
 	if (index1 < indexEnd_ && index2 < indexEnd_)
 	{
 		if (index1 == index2) return true;
-		
+
 		char* block1 = new char[blockSize_];
 		if (!this->Read(index1, block1)) return false;
-		
+
 		char* block2 = new char[blockSize_];
 		if (!this->Read(index2, block2)) return false;
-		
+
 		if (!this->Write(index1, block2)) return false;
 		if (!this->Write(index2, block1)) return false;
-		
+
 		delete[] block1;
 		delete[] block2;
 		return true;
@@ -157,17 +158,17 @@ bool Block::Move(size_t from, size_t to)
 		{
 			for (size_t i=from; i!=to; ++i)
 			{
-				if (!this->Swap(i, i+1)) return false;	
+				if (!this->Swap(i, i+1)) return false;
 			}
 		}
 		else
 		{
 			for (size_t i=from; i!=to; --i)
 			{
-				if (!this->Swap(i, i-1)) return false;	
+				if (!this->Swap(i, i-1)) return false;
 			}
 		}
-		return true;	
+		return true;
 	}
 	else return false;
 }
@@ -187,10 +188,10 @@ bool Block::Insert(size_t index, const char* block)
 		if (index < indexEnd_-1) return this->Move(indexEnd_-1, index);
 		else return true;
 	}
-	else 
+	else
 	{
 		// Write block to index after end of file
-		return this->Write(index, block); 
+		return this->Write(index, block);
 	}
 }
 
@@ -204,13 +205,13 @@ bool Block::Erase(size_t index)
 	{
 		fileSize_ -= blockSize_;
 		indexEnd_ -= 1;
-		
+
 		// Read entire file except the block to be deleted into memory.
 		char* buffer = new char[fileSize_];
-		for (size_t i=0, j=0; i!=indexEnd_+1; ++i) 
+		for (size_t i=0, j=0; i!=indexEnd_+1; ++i)
 		{
 			file_.seekg(i*blockSize_);
-			if (i != index) 
+			if (i != index)
 			{
 				file_.read(buffer+j*blockSize_, blockSize_);
 				++j;
@@ -238,7 +239,7 @@ bool Block::Erase(vector<size_t>& indices)
 	size_t maxIndices = indices.size();
 	fileSize_ -= maxIndices*blockSize_;
 	char* buffer = new char[fileSize_];
-	for (size_t i=0, k=0; i!=indexEnd_; ++i) 
+	for (size_t i=0, k=0; i!=indexEnd_; ++i)
 	{
 		file_.seekg(i*blockSize_);
 		bool toDelete = false;
@@ -250,14 +251,14 @@ bool Block::Erase(vector<size_t>& indices)
 				break;
 			}
 		}
-		if (!toDelete) 
+		if (!toDelete)
 		{
 			file_.read(buffer+k*blockSize_, blockSize_);
 			++k;
 		}
 	}
 	indexEnd_ -= maxIndices;
-	
+
 	file_.close();
 	file_.open(&*(filename_.begin()), ios_base::out | ios_base::trunc | ios_base::binary);
 	file_.write(buffer, fileSize_);	// Write the new file.
@@ -270,14 +271,14 @@ bool Block::Erase(vector<size_t>& indices)
 
 /********************************** Start of Class Header ************************************/
 // PURPOSE: Read and write data to a compound file header.
-CompoundFile::Header::Header() : 
+CompoundFile::Header::Header() :
 	fileType_(0xE11AB1A1E011CFD0LL),
 	uk1_(0), uk2_(0), uk3_(0), uk4_(0), uk5_(0x003B), uk6_(0x0003), uk7_(-2),
-	log2BigBlockSize_(9), log2SmallBlockSize_(6), 
+	log2BigBlockSize_(9), log2SmallBlockSize_(6),
 	uk8_(0), uk9_(0), uk10_(0), uk11_(0x00001000),
 	SBATStart_(-2), SBATCount_(0),
 	XBATStart_(-2), XBATCount_(0),
-	BATCount_(1), propertiesStart_(1) 
+	BATCount_(1), propertiesStart_(1)
 {
 	BATArray_[0] = 0;	// Initial BAT indices at block 0 (=block 1 in Block)
 	fill (BATArray_+1, BATArray_+109, -1);	// Rest of the BATArray is empty
@@ -336,7 +337,7 @@ void CompoundFile::Header::Read(char* block)
 	LittleEndian::Read(block, XBATStart_, 0x0044, 4);
 	LittleEndian::Read(block, XBATCount_, 0x0048, 4);
 	for (size_t i=0; i<109; ++i) LittleEndian::Read(block, BATArray_[i], 0x004C+i*4, 4);
-	Initialize();		
+	Initialize();
 }
 
 void CompoundFile::Header::Initialize()
@@ -454,7 +455,7 @@ bool CompoundFile::Create(const wchar_t* filename)
 	SaveProperties();
 
 	// Set property tree
-	propertyTrees_ = new PropertyTree;	
+	propertyTrees_ = new PropertyTree;
 	propertyTrees_->parent_ = 0;
 	propertyTrees_->self_ = properties_[0];
 	propertyTrees_->index_ = 0;
@@ -469,15 +470,15 @@ bool CompoundFile::Open(const wchar_t* filename, ios_base::openmode mode)
 {
 	Close();
 	if (!file_.Open(filename, mode)) return false;
-	
+
 	// Load header
 	if (!LoadHeader()) return false;
 
 	// Load BAT information
-	LoadBAT();	
+	LoadBAT();
 
 	// Load properties
-	propertyTrees_ = new PropertyTree;	
+	propertyTrees_ = new PropertyTree;
 	LoadProperties();
 	currentDirectory_ = propertyTrees_;
 
@@ -499,7 +500,7 @@ bool CompoundFile::Close()
 	}
 	properties_.clear();
 
-	if (propertyTrees_) 
+	if (propertyTrees_)
 	{
 		delete propertyTrees_;
 		propertyTrees_ = 0;
@@ -526,7 +527,7 @@ int CompoundFile::ChangeDirectory(const wchar_t* path)
 	previousDirectories_.push_back(currentDirectory_);
 
 	// Handle special cases
-	if (wcscmp(path, L".") == 0) 	
+	if (wcscmp(path, L".") == 0)
 	{
 		// Current directory
 		previousDirectories_.pop_back();
@@ -565,7 +566,7 @@ int CompoundFile::ChangeDirectory(const wchar_t* path)
 	{
 		for (; npos<pathLength; ++npos)
 		{
-			if (path[npos] == L'\\') break; 
+			if (path[npos] == L'\\') break;
 		}
 
 		wchar_t* directory = new wchar_t[npos-ipos+1];
@@ -618,7 +619,7 @@ int CompoundFile::PresentWorkingDirectory(wchar_t* path)
 		copy (currentDirectory_->self_->name_,
 			  currentDirectory_->self_->name_+directoryLength,
 			  directory.begin()+1);
-		fullpath.insert(fullpath.begin(), directory.begin(), directory.end());		
+		fullpath.insert(fullpath.begin(), directory.begin(), directory.end());
 	} while (currentDirectory_ = currentDirectory_->parent_);
 
 	fullpath.erase(fullpath.begin(), fullpath.begin()+11);
@@ -643,7 +644,7 @@ int CompoundFile::PresentWorkingDirectory(vector<wchar_t>& path)
 		copy (currentDirectory_->self_->name_,
 			  currentDirectory_->self_->name_+directoryLength,
 			  directory.begin()+1);
-		path.insert(path.begin(), directory.begin(), directory.end());		
+		path.insert(path.begin(), directory.begin(), directory.end());
 	} while (currentDirectory_ = currentDirectory_->parent_);
 
 	path.erase(path.begin(), path.begin()+11);
@@ -683,7 +684,7 @@ int CompoundFile::DelTree(const wchar_t* path)
 			currentDirectory_ = directory->children_[i];
 			PresentWorkingDirectory(curpath);
 			if (directory->children_[i]->self_->propertyType_ == 1)
-			{	
+			{
 				// Directory
 				DelTree(curpath);
 			}
@@ -698,7 +699,7 @@ int CompoundFile::DelTree(const wchar_t* path)
 	}
 
 	if (directory->self_->propertyType_ == 1)
-	{	
+	{
 		// Directory
 		RemoveDirectory(path);
 	}
@@ -757,7 +758,7 @@ int CompoundFile::RemoveFile(const wchar_t* path)
 // PURPOSE: Remove a file in the compound file.
 {
 	int ret = WriteFile(path, 0, 0);
-	if (ret == SUCCESS) 
+	if (ret == SUCCESS)
 	{
 		DeletePropertyTree(FindProperty(path));
 		SaveHeader();
@@ -779,7 +780,7 @@ int CompoundFile::FileSize(const wchar_t* path, size_t& size)
 		size = propertyTrees_->self_->size_;
 		return SUCCESS;
 	}
-	
+
 	// Check to see if file is present in the specified directory.
 	PropertyTree* property = FindProperty(path);
 	if (property == 0) return FILE_NOT_FOUND;
@@ -850,7 +851,7 @@ int CompoundFile::WriteFile(const wchar_t* path, const char* data, size_t size)
 {
 	PropertyTree* property = FindProperty(path);
 	if (property == 0) return FILE_NOT_FOUND;
-	
+
 	if (property->self_->size_ >= 4096)
 	{
 		if (size >= 4096) property->self_->startBlock_ = WriteData(data, size, property->self_->startBlock_, true);
@@ -1072,11 +1073,11 @@ void CompoundFile::IncreaseLocationReferences(vector<size_t> indices)
 			if (header_.BATArray_[i] >= indices[j] &&
 				header_.BATArray_[i] != -1) ++count;
 		}
-		header_.BATArray_[i] += count;	
+		header_.BATArray_[i] += count;
 	}}
 
 	// Change XBAT start block if any
-	if (header_.XBATCount_) 
+	if (header_.XBATCount_)
 	{
 		size_t count = 0;
 		for (size_t j=0; j<maxIndices; ++j)
@@ -1084,11 +1085,11 @@ void CompoundFile::IncreaseLocationReferences(vector<size_t> indices)
 			if (header_.XBATStart_ >= indices[j] &&
 				header_.XBATStart_ != -2) ++count;
 		}
-		header_.XBATStart_ += count;	
+		header_.XBATStart_ += count;
 	}
 
 	// Change SBAT start block if any
-	if (header_.SBATCount_) 
+	if (header_.SBATCount_)
 	{
 		size_t count = 0;
 		for (size_t j=0; j<maxIndices; ++j)
@@ -1096,7 +1097,7 @@ void CompoundFile::IncreaseLocationReferences(vector<size_t> indices)
 			if (header_.SBATStart_ >= indices[j] &&
 				header_.SBATStart_ != -2) ++count;
 		}
-		header_.SBATStart_ += count;	
+		header_.SBATStart_ += count;
 	}
 
 	// Change BAT block indices
@@ -1107,10 +1108,10 @@ void CompoundFile::IncreaseLocationReferences(vector<size_t> indices)
 		for (size_t j=0; j<maxIndices; ++j)
 		{
 			if (blocksIndices_[i] > indices[j] &&
-				blocksIndices_[i] != -2 && 
+				blocksIndices_[i] != -2 &&
 				blocksIndices_[i] != -3) ++count;
 		}
-		blocksIndices_[i] += count;	
+		blocksIndices_[i] += count;
 	}}
 
 	// Change properties start block
@@ -1124,7 +1125,7 @@ void CompoundFile::IncreaseLocationReferences(vector<size_t> indices)
 
 	// Change individual properties start block if their size is more than 4096
 	size_t maxProperties = properties_.size();
-	if (!properties_.empty()) 
+	if (!properties_.empty())
 	{
 		size_t count = 0;
 		for (size_t j=0; j<maxIndices; ++j)
@@ -1132,7 +1133,7 @@ void CompoundFile::IncreaseLocationReferences(vector<size_t> indices)
 			if (properties_[0]->startBlock_ >= indices[j] &&
 				properties_[0]->startBlock_ != -2) ++count;
 		}
-		properties_[0]->startBlock_ += count;	
+		properties_[0]->startBlock_ += count;
 	}
 	{for (size_t i=1; i<maxProperties; ++i)
 	{
@@ -1144,7 +1145,7 @@ void CompoundFile::IncreaseLocationReferences(vector<size_t> indices)
 				if (properties_[i]->startBlock_ >= indices[j] &&
 					properties_[i]->startBlock_ != -2) ++count;
 			}
-			properties_[i]->startBlock_ += count;	
+			properties_[i]->startBlock_ += count;
 		}
 	}}
 }
@@ -1152,7 +1153,7 @@ void CompoundFile::IncreaseLocationReferences(vector<size_t> indices)
 void CompoundFile::DecreaseLocationReferences(vector<size_t> indices)
 // PURPOSE: Decrease block location references in header, BAT indices and properties,
 // PURPOSE: which will be affected by the deletion of indices contained in indices.
-// PROMISE: BAT indices pointing to a deleted index will be redirected to point to 
+// PROMISE: BAT indices pointing to a deleted index will be redirected to point to
 // PROMISE: the location where the deleted index original points to.
 // PROMISE: Block location references which are smaller than all the new indices
 // PROMISE: will not be affected.
@@ -1174,7 +1175,7 @@ void CompoundFile::DecreaseLocationReferences(vector<size_t> indices)
 	}}
 
 	// Change XBAT start block if any
-	if (header_.XBATCount_) 
+	if (header_.XBATCount_)
 	{
 		size_t count = 0;
 		for (size_t j=0; j<maxIndices; ++j)
@@ -1186,7 +1187,7 @@ void CompoundFile::DecreaseLocationReferences(vector<size_t> indices)
 	}
 
 	// Change SBAT start block if any
-	if (header_.SBATCount_) 
+	if (header_.SBATCount_)
 	{
 		size_t count = 0;
 		for (size_t j=0; j<maxIndices; ++j)
@@ -1196,7 +1197,7 @@ void CompoundFile::DecreaseLocationReferences(vector<size_t> indices)
 		}
 		header_.SBATStart_ -= count;
 	}
-	
+
 	// Change BAT block indices
 	// Redirect BAT indices pointing to a deleted index to point to
 	// the location where the deleted index original points to.
@@ -1209,13 +1210,13 @@ void CompoundFile::DecreaseLocationReferences(vector<size_t> indices)
 			end = true;
 			for (size_t j=0; j<maxIndices; ++j)
 			{
-				if (blocksIndices_[i] == indices[j]) 
+				if (blocksIndices_[i] == indices[j])
 				{
 					blocksIndices_[i] = blocksIndices_[indices[j]];
 					end = false;
 					break;
 				}
-			}		
+			}
 		} while (!end);
 	}}
 	// Erase indices to be deleted from the block indices
@@ -1233,10 +1234,10 @@ void CompoundFile::DecreaseLocationReferences(vector<size_t> indices)
 		for (size_t j=0; j<maxIndices; ++j)
 		{
 			if (blocksIndices_[i] > indices[j] &&
-				blocksIndices_[i] != -2 && 
+				blocksIndices_[i] != -2 &&
 				blocksIndices_[i] != -3) ++count;
 		}
-		blocksIndices_[i] -= count;	
+		blocksIndices_[i] -= count;
 	}}
 
 	// Change properties start block
@@ -1250,7 +1251,7 @@ void CompoundFile::DecreaseLocationReferences(vector<size_t> indices)
 
 	size_t maxProperties = properties_.size();
 	// Change Root Entry start block
-	if (!properties_.empty()) 
+	if (!properties_.empty())
 	{
 		size_t count = 0;
 		for (size_t j=0; j<maxIndices; ++j)
@@ -1258,7 +1259,7 @@ void CompoundFile::DecreaseLocationReferences(vector<size_t> indices)
 			if (properties_[0]->startBlock_ > indices[j] &&
 				properties_[0]->startBlock_ != -2) ++count;
 		}
-		properties_[0]->startBlock_ -= count;	
+		properties_[0]->startBlock_ -= count;
 	}
 	{for (size_t i=1; i<maxProperties; ++i)
 	{
@@ -1271,13 +1272,13 @@ void CompoundFile::DecreaseLocationReferences(vector<size_t> indices)
 				if (properties_[i]->startBlock_ > indices[j] &&
 					properties_[i]->startBlock_ != -2) ++count;
 			}
-			properties_[i]->startBlock_ -= count;	
+			properties_[i]->startBlock_ -= count;
 		}
 	}}
 }
 
-void CompoundFile::SplitPath(const wchar_t* path, 
-							 wchar_t*& parentpath, 
+void CompoundFile::SplitPath(const wchar_t* path,
+							 wchar_t*& parentpath,
 							 wchar_t*& propertyname)
 // PURPOSE: Get a path's parent path and its name.
 // EXPLAIN: E.g. path = "\\Abc\\def\\ghi => parentpath = "\\Abc\\def", propertyname = "ghi".
@@ -1289,7 +1290,7 @@ void CompoundFile::SplitPath(const wchar_t* path,
 	int npos;
 	for (npos=pathLength-1; npos>0; --npos)
 	{
-		if (path[npos] == L'\\') break; 
+		if (path[npos] == L'\\') break;
 	}
 
 	if (npos != 0)
@@ -1305,7 +1306,7 @@ void CompoundFile::SplitPath(const wchar_t* path,
 	if (npos==0 && pathLength > 0 && path[0] == L'\\') ++npos;
 	propertyname = new wchar_t[pathLength-npos+1];
 	copy (path+npos, path+pathLength, propertyname);
-	propertyname[pathLength-npos] = 0;	
+	propertyname[pathLength-npos] = 0;
 }
 
 /*********************** Inaccessible Header Functions ***************************/
@@ -1316,7 +1317,7 @@ bool CompoundFile::LoadHeader()
 	file_.Read(0, &*(block_.begin()));
 	header_.Read(&*(block_.begin()));
 
-	// Check magic number to see if it is a compound file 
+	// Check magic number to see if it is a compound file
 	if (header_.fileType_ != 0xE11AB1A1E011CFD0LL) return false;
 
 	block_.resize(header_.bigBlockSize_);		// Resize buffer block
@@ -1341,7 +1342,7 @@ void CompoundFile::LoadBAT()
 		// Load blocksIndices_
 		blocksIndices_.resize(blocksIndices_.size()+128, -1);
 		file_.Read(header_.BATArray_[i]+1, &*(block_.begin()));
-		for (size_t j=0; j<128; ++j) 
+		for (size_t j=0; j<128; ++j)
 		{
 			LittleEndian::Read(&*(block_.begin()), blocksIndices_[j+i*128], j*4, 4);
 		}
@@ -1352,7 +1353,7 @@ void CompoundFile::LoadBAT()
 	{
 		blocksIndices_.resize(blocksIndices_.size()+128, -1);
 		file_.Read(header_.XBATStart_+i+1, &*(block_.begin()));
-		for (size_t j=0; j<128; ++j) 
+		for (size_t j=0; j<128; ++j)
 		{
 			LittleEndian::Read(&*(block_.begin()), blocksIndices_[j+((i+109)*128)], j*4, 4);
 		}
@@ -1407,20 +1408,20 @@ void CompoundFile::SaveBAT()
 size_t CompoundFile::DataSize(size_t startIndex, bool isBig)
 // PURPOSE: Gets the total size occupied by a property, starting from startIndex.
 // EXPLAIN: isBig is true if property uses big blocks, false if it uses small blocks.
-// PROMISE: Returns the total size occupied by the property which is the total 
+// PROMISE: Returns the total size occupied by the property which is the total
 // PROMISE: number of blocks occupied multiply by the block size.
 {
 	vector<size_t> indices;
-	if (isBig) 
+	if (isBig)
 	{
 		GetBlockIndices(startIndex, indices, true);
 		return indices.size()*header_.bigBlockSize_;
 	}
-	else 
+	else
 	{
 		GetBlockIndices(startIndex, indices, false);
 		return indices.size()*header_.smallBlockSize_;
-	}	
+	}
 }
 
 size_t CompoundFile::ReadData(size_t startIndex, char* data, bool isBig)
@@ -1428,7 +1429,7 @@ size_t CompoundFile::ReadData(size_t startIndex, char* data, bool isBig)
 // REQUIRE: data must be large enough to receive the property's data
 // REQUIRE: The required data size can be obtained by using DataSize().
 // EXPLAIN: isBig is true if property uses big blocks, false if it uses small blocks.
-// PROMISE: Returns the total size occupied by the property which is the total 
+// PROMISE: Returns the total size occupied by the property which is the total
 // PROMISE: number of blocks occupied multiply by the block size.
 {
 	vector<size_t> indices;
@@ -1449,7 +1450,7 @@ size_t CompoundFile::ReadData(size_t startIndex, char* data, bool isBig)
 		size_t maxIndex = *max_element(indices.begin(), indices.end());
 		size_t smallBlocksPerBigBlock = header_.bigBlockSize_ / header_.smallBlockSize_;
 		size_t minBlock = minIndex / smallBlocksPerBigBlock;
-		size_t maxBlock = maxIndex / smallBlocksPerBigBlock + 
+		size_t maxBlock = maxIndex / smallBlocksPerBigBlock +
 						  (maxIndex % smallBlocksPerBigBlock ? 1 : 0);
 		size_t totalBlocks = maxBlock - minBlock;
 		char* buffer = new char[DataSize(properties_[0]->startBlock_, true)];
@@ -1459,8 +1460,8 @@ size_t CompoundFile::ReadData(size_t startIndex, char* data, bool isBig)
 		for (size_t i=0; i<maxIndices; ++i)
 		{
 			size_t start = (indices[i] - minBlock*smallBlocksPerBigBlock)*header_.smallBlockSize_;
-			copy (buffer+start, 
-				  buffer+start+header_.smallBlockSize_, 
+			copy (buffer+start,
+				  buffer+start+header_.smallBlockSize_,
 				  data+i*header_.smallBlockSize_);
 		}
 		delete[] buffer;
@@ -1510,20 +1511,20 @@ size_t CompoundFile::WriteData(const char* data, size_t size, int startIndex, bo
 		size_t curIndex=0;
 		if (maxPresentBlocks != 0)
 		{
-			for (; remainingFullBlocks && curIndex<maxPresentBlocks; 
+			for (; remainingFullBlocks && curIndex<maxPresentBlocks;
 				   --remainingFullBlocks, ++curIndex)
 			{
-				file_.Write(indices[curIndex]+1, data+curIndex*header_.bigBlockSize_);			
-			} 
+				file_.Write(indices[curIndex]+1, data+curIndex*header_.bigBlockSize_);
+			}
 		}
-		
-		// Check if all blocks have been written		
+
+		// Check if all blocks have been written
 		size_t index;
 		if (indices.empty()) index = 0;
 		else if (curIndex == 0) index = indices[0];
 		else index = (startIndex != -2) ? indices[curIndex-1] : 0;
 		if (remainingFullBlocks != 0)
-		{			
+		{
 			// Require extra blocks to write data (i.e. new data is larger than original data
 			do
 			{
@@ -1531,18 +1532,18 @@ size_t CompoundFile::WriteData(const char* data, size_t size, int startIndex, bo
 				if (startIndex == -2) startIndex = newIndex; // Get start index
 				else LinkBlocks(index, newIndex, true); // Link last index to new index
 				file_.Write(newIndex+1, data+curIndex*header_.bigBlockSize_);
-				++curIndex;			
+				++curIndex;
 				index = newIndex;
 			} while (--remainingFullBlocks);
 		}
-		
+
 		if (extraSize != 0)
 		{
 			size_t newIndex;
 			if (curIndex >= maxPresentBlocks)
 			{
 				// No more free blocks to write extra block data
-				newIndex = GetFreeBlockIndex(true); // Get new free block to write data			
+				newIndex = GetFreeBlockIndex(true); // Get new free block to write data
 				if (startIndex == -2) startIndex = newIndex;
 				else LinkBlocks(index, newIndex,true);
 			}
@@ -1551,7 +1552,7 @@ size_t CompoundFile::WriteData(const char* data, size_t size, int startIndex, bo
 			// Write extra block after increasing its size to the minimum block size
 			vector<char> tempdata(header_.bigBlockSize_, 0);
 			copy (data+curIndex*header_.bigBlockSize_, data+curIndex*header_.bigBlockSize_+extraSize, tempdata.begin());
-			file_.Write(newIndex+1, &*(tempdata.begin()));			
+			file_.Write(newIndex+1, &*(tempdata.begin()));
 		}
 		return startIndex;
 	}
@@ -1600,7 +1601,7 @@ size_t CompoundFile::WriteData(const char* data, size_t size, int startIndex, bo
 			size_t maxBlocks = properties_[0]->size_ / header_.bigBlockSize_ +
 						       (properties_[0]->size_ % header_.bigBlockSize_ ? 1 : 0);
 			size_t actualSize = maxBlocks * header_.bigBlockSize_;
-			smallBlocksData.resize(actualSize);	
+			smallBlocksData.resize(actualSize);
 			ReadData(properties_[0]->startBlock_, &*(smallBlocksData.begin()), true);
 			smallBlocksData.resize(properties_[0]->size_);
 
@@ -1623,7 +1624,7 @@ size_t CompoundFile::WriteData(const char* data, size_t size, int startIndex, bo
 			size_t maxBlocks = properties_[0]->size_ / header_.bigBlockSize_ +
 						       (properties_[0]->size_ % header_.bigBlockSize_ ? 1 : 0);
 			size_t actualSize = maxBlocks * header_.bigBlockSize_;
-			smallBlocksData.resize(actualSize);	
+			smallBlocksData.resize(actualSize);
 			ReadData(properties_[0]->startBlock_, &*(smallBlocksData.begin()), true);
 			smallBlocksData.resize(properties_[0]->size_);
 		}
@@ -1658,7 +1659,7 @@ void CompoundFile::GetBlockIndices(size_t startIndex, vector<size_t>& indices, b
 	{
 		for (size_t i=startIndex; i!=-2; i=blocksIndices_[i]) indices.push_back(i);
 	}
-	else 
+	else
 	{
 		for (size_t i=startIndex; i!=-2; i=sblocksIndices_[i]) indices.push_back(i);
 	}
@@ -1667,7 +1668,7 @@ void CompoundFile::GetBlockIndices(size_t startIndex, vector<size_t>& indices, b
 size_t CompoundFile::GetFreeBlockIndex(bool isBig)
 // PURPOSE: Get the index of a new block where data can be stored.
 // EXPLAIN: isBig is true if property uses big blocks, false if it uses small blocks.
-// PROMISE: It does not physically create a new block in the compound file. 
+// PROMISE: It does not physically create a new block in the compound file.
 // PROMISE: It only adjust BAT arrays and indices or SBAT arrays and indices so that
 // PROMISE: it gives the index of a new block where data can be inserted.
 {
@@ -1675,14 +1676,14 @@ size_t CompoundFile::GetFreeBlockIndex(bool isBig)
 	if (isBig)
 	{
 		// Find first free location
-		index = distance(blocksIndices_.begin(), 
-						 find(blocksIndices_.begin(), 
+		index = distance(blocksIndices_.begin(),
+						 find(blocksIndices_.begin(),
 							  blocksIndices_.end(), -1));
 		if (index == blocksIndices_.size())
 		{
 			ExpandBATArray(true);
-			index = distance(blocksIndices_.begin(), 
- 							 find(blocksIndices_.begin(), 
+			index = distance(blocksIndices_.begin(),
+ 							 find(blocksIndices_.begin(),
 								  blocksIndices_.end(), -1));
 		}
 		blocksIndices_[index] = -2;
@@ -1690,14 +1691,14 @@ size_t CompoundFile::GetFreeBlockIndex(bool isBig)
 	else
 	{
 		// Find first free location
-		index = distance(sblocksIndices_.begin(), 
-						 find(sblocksIndices_.begin(), 
+		index = distance(sblocksIndices_.begin(),
+						 find(sblocksIndices_.begin(),
 							  sblocksIndices_.end(), -1));
 		if (index == sblocksIndices_.size())
 		{
 			ExpandBATArray(false);
-			index = distance(sblocksIndices_.begin(), 
-							 find(sblocksIndices_.begin(), 
+			index = distance(sblocksIndices_.begin(),
+							 find(sblocksIndices_.begin(),
 							 	  sblocksIndices_.end(), -1));
 		}
 		sblocksIndices_[index] = -2;
@@ -1714,8 +1715,8 @@ void CompoundFile::ExpandBATArray(bool isBig)
 
 	if (isBig)
 	{
-		size_t BATindex = distance(&header_.BATArray_[0], 
-								   find(header_.BATArray_, 
+		size_t BATindex = distance(&header_.BATArray_[0],
+								   find(header_.BATArray_,
 										header_.BATArray_+109, -1));
 		if (BATindex < 109)
 		{
@@ -1775,13 +1776,13 @@ void CompoundFile::LinkBlocks(size_t from, size_t to, bool isBig)
 // PURPOSE: Link one BAT index to another.
 // EXPLAIN: isBig is true if property uses big blocks, false if it uses small blocks.
 {
-	if (isBig) blocksIndices_[from] = to;	
+	if (isBig) blocksIndices_[from] = to;
 	else sblocksIndices_[from] = to;
 }
 
 void CompoundFile::FreeBlocks(vector<size_t>& indices, bool isBig)
 // PURPOSE: Delete blocks of data from compound file.
-// EXPLAIN: indices contains indices to blocks of data to be deleted. 
+// EXPLAIN: indices contains indices to blocks of data to be deleted.
 // EXPLAIN: isBig is true if property uses big blocks, false if it uses small blocks.
 {
 	if (isBig)
@@ -1794,10 +1795,10 @@ void CompoundFile::FreeBlocks(vector<size_t>& indices, bool isBig)
 
 		// Shrink BAT indices if necessary
 		vector<size_t> indicesToRemove;
-		while (distance(find(blocksIndices_.begin(), 
+		while (distance(find(blocksIndices_.begin(),
 						     blocksIndices_.end(),-1),
 						     blocksIndices_.end()) >= 128)
-		{			
+		{
 			blocksIndices_.resize(blocksIndices_.size()-128);
 			if (header_.XBATCount_ != 0)
 			{
@@ -1809,8 +1810,8 @@ void CompoundFile::FreeBlocks(vector<size_t>& indices, bool isBig)
 			else
 			{
 				// No XBAT, delete last occupied BAT array element
-				size_t BATindex = distance(&header_.BATArray_[0], 
-										   find(header_.BATArray_, 
+				size_t BATindex = distance(&header_.BATArray_[0],
+										   find(header_.BATArray_,
 												header_.BATArray_+109, -1));
 				if (BATindex != 109)
 				{
@@ -1836,10 +1837,10 @@ void CompoundFile::FreeBlocks(vector<size_t>& indices, bool isBig)
 		char* newdata = new char[properties_[0]->size_-maxIndices*header_.smallBlockSize_];
 		{for (size_t i=0, j=0; i<maxSmallBlocks; ++i)
 		{
-			if (find(indices.begin(), indices.end(), i) == indices.end()) 
+			if (find(indices.begin(), indices.end(), i) == indices.end())
 			{
-				copy (data+i*header_.smallBlockSize_, 
-					  data+i*header_.smallBlockSize_+header_.smallBlockSize_, 
+				copy (data+i*header_.smallBlockSize_,
+					  data+i*header_.smallBlockSize_+header_.smallBlockSize_,
 					  newdata+j*header_.smallBlockSize_);
 				++j;
 			}
@@ -1870,7 +1871,7 @@ void CompoundFile::FreeBlocks(vector<size_t>& indices, bool isBig)
 			sblocksIndices_.push_back(-1);
 		}}
 		vector<size_t> indicesToRemove;
-		while (distance(find(sblocksIndices_.begin(), 
+		while (distance(find(sblocksIndices_.begin(),
 						     sblocksIndices_.end(),-1),
 						     sblocksIndices_.end()) >= 128)
 		{
@@ -1897,7 +1898,7 @@ void CompoundFile::LoadProperties()
 	size_t maxPropertiesBlock = propertiesSize / header_.bigBlockSize_;
 	size_t propertiesPerBlock = header_.bigBlockSize_ / 128;
 	size_t maxProperties = maxPropertiesBlock * propertiesPerBlock;
-	size_t maxBlocks = maxProperties / propertiesPerBlock + 
+	size_t maxBlocks = maxProperties / propertiesPerBlock +
 					   (maxProperties % propertiesPerBlock ? 1 : 0);
 
 	for (size_t i=0; i<maxBlocks; ++i)
@@ -1922,8 +1923,8 @@ void CompoundFile::LoadProperties()
 	propertyTrees_->self_ = properties_[0];
 	propertyTrees_->index_ = 0;
 
-	InsertPropertyTree(propertyTrees_, 
-					   properties_[properties_[0]->childProp_], 
+	InsertPropertyTree(propertyTrees_,
+					   properties_[properties_[0]->childProp_],
 					   properties_[0]->childProp_);
 }
 
@@ -1933,7 +1934,7 @@ void CompoundFile::SaveProperties()
 	// Calculate total size required by properties
 	size_t maxProperties = properties_.size();
 	size_t propertiesPerBlock = header_.bigBlockSize_ / 128;
-	size_t maxBlocks = maxProperties / propertiesPerBlock + 
+	size_t maxBlocks = maxProperties / propertiesPerBlock +
 					   (maxProperties % propertiesPerBlock ? 1 : 0);
 	size_t propertiesSize = maxBlocks*header_.bigBlockSize_;
 	char* buffer = new char[propertiesSize];
@@ -1956,7 +1957,7 @@ int CompoundFile::MakeProperty(const wchar_t* path, CompoundFile::Property* prop
 {
 	wchar_t* parentpath = 0;
 	wchar_t* propertyname = 0;
-	
+
 	// Change to the specified directory. If specified directory is not present,
 	// create it.
 	if (wcslen(path) != 0)
@@ -1972,7 +1973,7 @@ int CompoundFile::MakeProperty(const wchar_t* path, CompoundFile::Property* prop
 			if (ChangeDirectory(parentpath) != SUCCESS)
 			{
 				int ret = MakeDirectory(parentpath);
-				if (ret != SUCCESS) 
+				if (ret != SUCCESS)
 				{
 					delete[] parentpath;
 					delete[] propertyname;
@@ -1985,7 +1986,7 @@ int CompoundFile::MakeProperty(const wchar_t* path, CompoundFile::Property* prop
 
 		// Insert property into specified directory
 		size_t propertynameLength = wcslen(propertyname);
-		if (propertynameLength >= 32) 
+		if (propertynameLength >= 32)
 		{
 			delete[] propertyname;
 			return NAME_TOO_LONG;
@@ -2013,10 +2014,10 @@ int CompoundFile::MakeProperty(const wchar_t* path, CompoundFile::Property* prop
 		}
 		else return DUPLICATE_PROPERTY;
 	}
-	else 
+	else
 	{
 		if (parentpath != 0) delete[] parentpath;
-		return INVALID_PATH;	
+		return INVALID_PATH;
 	}
 }
 
@@ -2034,14 +2035,14 @@ CompoundFile::PropertyTree* CompoundFile::FindProperty(size_t index)
 		{
 			previousDirectories_.push_back(currentTree->children_[i]);
 			PropertyTree* child = FindProperty(index);
-			if (child != 0) 
+			if (child != 0)
 			{
 				previousDirectories_.pop_back();
 				return child;
 			}
 		}
 	}
-	else 
+	else
 	{
 		previousDirectories_.pop_back();
 		return currentTree;
@@ -2084,18 +2085,18 @@ CompoundFile::PropertyTree* CompoundFile::FindProperty(const wchar_t* path)
 
 	// Check to see if file is present in the specified directory.
 	PropertyTree* property = 0;
-	if (filename != 0) 
+	if (filename != 0)
 	{
 		property = FindProperty(currentDirectory_, filename);
 		delete[] filename;
 	}
 	currentDirectory_ = previousDirectories_.back();
 	previousDirectories_.pop_back();
-	return property;	
+	return property;
 }
 
 CompoundFile::PropertyTree*
-CompoundFile::FindProperty(CompoundFile::PropertyTree* parentTree, 
+CompoundFile::FindProperty(CompoundFile::PropertyTree* parentTree,
 						   wchar_t* name)
 // PURPOSE: Find property in the compound file, given the parent property tree and its name.
 // PROMISE: Returns a pointer to the property tree of the property if property
@@ -2115,8 +2116,8 @@ CompoundFile::FindProperty(CompoundFile::PropertyTree* parentTree,
 	return 0;
 }
 
-void CompoundFile::InsertPropertyTree(CompoundFile::PropertyTree* parentTree, 
-									  CompoundFile::Property* property, 
+void CompoundFile::InsertPropertyTree(CompoundFile::PropertyTree* parentTree,
+									  CompoundFile::Property* property,
 									  size_t index)
 // PURPOSE: Insert a property and all its siblings and children into the property tree.
 // REQUIRE: If the property is a new property and its index is already occupied by
@@ -2127,8 +2128,8 @@ void CompoundFile::InsertPropertyTree(CompoundFile::PropertyTree* parentTree,
 // EXPLAIN: parentTree is the parent of the new property.
 // EXPLAIN: property is the property to be added.
 // EXPLAIN: index is the index of the new property.
-// PROMISE: The property will be added as the parent tree's child and the parent's 
-// PROMISE: child property and all the its children previous property and next property 
+// PROMISE: The property will be added as the parent tree's child and the parent's
+// PROMISE: child property and all the its children previous property and next property
 // PROMISE: will be readjusted to accomodate the next property.
 {
 	PropertyTree* tree = new PropertyTree;
@@ -2138,22 +2139,22 @@ void CompoundFile::InsertPropertyTree(CompoundFile::PropertyTree* parentTree,
 
 	if (property->previousProp_ != -1)
 	{
-		InsertPropertyTree(parentTree, 
-						   properties_[property->previousProp_], 
+		InsertPropertyTree(parentTree,
+						   properties_[property->previousProp_],
 						   property->previousProp_);
 	}
 
 	if (property->nextProp_ != -1)
 	{
-		InsertPropertyTree(parentTree, 
-						   properties_[property->nextProp_], 
+		InsertPropertyTree(parentTree,
+						   properties_[property->nextProp_],
 						   property->nextProp_);
 	}
 
 	if (property->childProp_ != -1)
 	{
-		InsertPropertyTree(tree, 
-						   properties_[property->childProp_], 
+		InsertPropertyTree(tree,
+						   properties_[property->childProp_],
 						   property->childProp_);
 	}
 
@@ -2173,7 +2174,7 @@ void CompoundFile::InsertPropertyTree(CompoundFile::PropertyTree* parentTree,
 void CompoundFile::DeletePropertyTree(CompoundFile::PropertyTree* tree)
 // PURPOSE: Delete a property from properties.
 // EXPLAIN: tree is the property tree to be deleted.
-// PROMISE: The tree's parent's child property and all the its children previous property 
+// PROMISE: The tree's parent's child property and all the its children previous property
 // PROMISE: and next property will be readjusted to accomodate the deleted property.
 {
 	// Decrease all property references
@@ -2224,12 +2225,12 @@ void CompoundFile::UpdateChildrenIndices(CompoundFile::PropertyTree* parentTree)
 		{
 			children[curChild]->self_->nextProp_ = children[nextChild]->index_;
 			for (++curChild, ++nextChild;
-				 nextChild<maxChildren; 
+				 nextChild<maxChildren;
 				 ++curChild, ++nextChild)
 			{
 				children[curChild]->self_->previousProp_ = -1;
 				children[curChild]->self_->nextProp_ = children[nextChild]->index_;
-				
+
 			}
  			children[curChild]->self_->previousProp_ = -1;
 			children[curChild]->self_->nextProp_ = -1;
@@ -2241,7 +2242,7 @@ void CompoundFile::UpdateChildrenIndices(CompoundFile::PropertyTree* parentTree)
 	}
 }
 
-void CompoundFile::IncreasePropertyReferences(CompoundFile::PropertyTree* parentTree, 
+void CompoundFile::IncreasePropertyReferences(CompoundFile::PropertyTree* parentTree,
 											  size_t index)
 // PURPOSE: Increase all property references (previous property, next property
 // PURPOSE: and child property) which will be affected by the insertion of the new index.
@@ -2350,7 +2351,7 @@ size_t Record::Read(const char* data)
 	return recordSize_;
 }
 size_t Record::Write(char* data)
-{	
+{
 	LittleEndian::Write(data, code_, 0, 2);		// Write operation code.
 	size_t npos = 2;
 
@@ -2366,12 +2367,12 @@ size_t Record::Write(char* data)
 			copy (data_.begin()+i*8224, data_.begin()+(i+1)*8224, data+npos);
 			npos += 8224;
 
-			if (size != 0) 
+			if (size != 0)
 			{
 				++i;
 				LittleEndian::Write(data, 0x3C, npos, 2);	// Write CONTINUE code.
 				npos += 2;
-			}		
+			}
 		}
 
 		LittleEndian::Write(data, size, npos, 2);	// Write size of record.
@@ -2395,7 +2396,7 @@ size_t Record::Write(char* data)
 			size = continueIndices_[c] - continueIndices_[c-1];
 			LittleEndian::Write(data, size, npos, 2);
 			npos += 2;
-			copy (data_.begin()+continueIndices_[c-1], 
+			copy (data_.begin()+continueIndices_[c-1],
 				  data_.begin()+continueIndices_[c],
 				  data+npos);
 			npos += size;
@@ -2405,7 +2406,7 @@ size_t Record::Write(char* data)
 		size = data_.size() - continueIndices_[c-1];
 		LittleEndian::Write(data, size, npos, 2);
 		npos += 2;
-		copy (data_.begin()+continueIndices_[c-1], 
+		copy (data_.begin()+continueIndices_[c-1],
 			  data_.end(),
 			  data+npos);
 		npos += size;
@@ -2421,7 +2422,7 @@ size_t Record::RecordSize() {return recordSize_;}
 BOF::BOF() : Record() {code_ = CODE::BOF; dataSize_ = 16; recordSize_ = 20;}
 size_t BOF::Read(const char* data)
 {
-	Record::Read(data);	
+	Record::Read(data);
 	LittleEndian::Read(data_, version_, 0, 2);
 	LittleEndian::Read(data_, type_, 2, 2);
 	LittleEndian::Read(data_, buildIdentifier_, 4, 2);
@@ -2450,20 +2451,20 @@ YEOF::YEOF() : Record() {code_ = CODE::YEOF; dataSize_ = 0; recordSize_ = 4;}
 /************************************************************************************************************/
 SmallString::SmallString() : name_(0), wname_(0) {};
 SmallString::~SmallString() {Reset();}
-SmallString::SmallString(const SmallString& s) : 
+SmallString::SmallString(const SmallString& s) :
 	name_(0), wname_(0), unicode_(s.unicode_)
 {
 	if (s.name_)
 	{
 		size_t len = strlen(s.name_);
 		name_ = new char[len+1];
-		strcpy(name_, s.name_);	
+		strcpy(name_, s.name_);
 	}
 	if (s.wname_)
 	{
 		size_t len = wcslen(s.wname_);
 		wname_ = new wchar_t[len+1];
-		wcscpy(wname_, s.wname_);	
+		wcscpy(wname_, s.wname_);
 	}
 }
 SmallString& SmallString::operator=(const SmallString& s)
@@ -2474,13 +2475,13 @@ SmallString& SmallString::operator=(const SmallString& s)
 	{
 		size_t len = strlen(s.name_);
 		name_ = new char[len+1];
-		strcpy(name_, s.name_);	
+		strcpy(name_, s.name_);
 	}
 	if (s.wname_)
 	{
 		size_t len = wcslen(s.wname_);
 		wname_ = new wchar_t[len+1];
-		wcscpy(wname_, s.wname_);	
+		wcscpy(wname_, s.wname_);
 	}
 	return *this;
 }
@@ -2516,7 +2517,7 @@ size_t SmallString::Read(const char* data)
 	size_t bytesRead = 2;
 	if (unicode_ == 0)
 	{
-		// ANSI string	
+		// ANSI string
 		name_ = new char[stringSize+1];
 		LittleEndian::ReadString(data, name_, 2, stringSize);
 		name_[stringSize] = 0;
@@ -2593,8 +2594,8 @@ size_t SmallString::StringSize()
 /************************************************************************************************************/
 LargeString::LargeString() : unicode_(-1), richtext_(0), phonetic_(0) {};
 LargeString::~LargeString() {};
-LargeString::LargeString(const LargeString& s) : 
-	name_(s.name_), wname_(s.wname_), 
+LargeString::LargeString(const LargeString& s) :
+	name_(s.name_), wname_(s.wname_),
 	unicode_(s.unicode_), richtext_(s.richtext_), phonetic_(s.phonetic_) {};
 LargeString& LargeString::operator=(const LargeString& s)
 {
@@ -2624,7 +2625,7 @@ const LargeString& LargeString::operator=(const wchar_t* str)
 	name_.clear();
 	size_t len = wcslen(str);
 	wname_.resize(len+1);
-	wcscpy(&*(wname_.begin()), str);	
+	wcscpy(&*(wname_.begin()), str);
 	return *this;
 }
 size_t LargeString::Read(const char* data)
@@ -2633,7 +2634,7 @@ size_t LargeString::Read(const char* data)
 	LittleEndian::Read(data, stringSize, 0, 2);
 	LittleEndian::Read(data, unicode_, 2, 1);
 	size_t npos = 3;
-	if (unicode_ & 8) 
+	if (unicode_ & 8)
 	{
 		LittleEndian::Read(data, richtext_, npos, 2);
 		npos += 2;
@@ -2643,7 +2644,7 @@ size_t LargeString::Read(const char* data)
 	wname_.clear();
 	size_t bytesRead = 2;
 	if (stringSize>0) bytesRead += ContinueRead(data+2, stringSize);
-	else bytesRead = 3;	
+	else bytesRead = 3;
 	return bytesRead;
 }
 size_t LargeString::ContinueRead(const char* data, size_t size)
@@ -2750,7 +2751,7 @@ size_t LargeString::Write(char* data)
 	}
 	return bytesWrite;
 }
-size_t LargeString::DataSize() 
+size_t LargeString::DataSize()
 {
 	size_t dataSize = StringSize() + 3;
 	if (richtext_) dataSize += 2 + 4*richtext_;
@@ -2789,31 +2790,31 @@ size_t Workbook::Read(const char* data)
 			case CODE::BOF:
 				bytesRead += bof_.Read(data+bytesRead);
 				break;
-				
+
 			case CODE::WINDOW1:
 				bytesRead += window1_.Read(data+bytesRead);
 				break;
-				
+
 			case CODE::FONT:
 				fonts_.push_back(Font());
 				bytesRead += fonts_.back().Read(data+bytesRead);
 				break;
-				
+
 			case CODE::XF:
 				XFs_.push_back(XF());
 				bytesRead += XFs_.back().Read(data+bytesRead);
 				break;
-				
+
 			case CODE::STYLE:
 				styles_.push_back(Style());
 				bytesRead += styles_.back().Read(data+bytesRead);
 				break;
-				
+
 			case CODE::BOUNDSHEET:
 				boundSheets_.push_back(BoundSheet());
 				bytesRead += boundSheets_.back().Read(data+bytesRead);
 				break;
-				
+
 			case CODE::SST:
 				bytesRead += sst_.Read(data+bytesRead);
 				break;
@@ -2836,12 +2837,12 @@ size_t Workbook::Write(char* data)
 	size_t bytesWritten = 0;
 
 	bytesWritten += bof_.Write(data+bytesWritten);
-	
+
 	bytesWritten += window1_.Write(data+bytesWritten);
-	
+
 	size_t maxFonts = fonts_.size();
 	{for (size_t i=0; i<maxFonts; ++i) {bytesWritten += fonts_[i].Write(data+bytesWritten);}}
-	
+
 	size_t maxXFs = XFs_.size();
 	{for (size_t i=0; i<maxXFs; ++i) {bytesWritten += XFs_[i].Write(data+bytesWritten);}}
 
@@ -2853,12 +2854,12 @@ size_t Workbook::Write(char* data)
 
 	bytesWritten += sst_.Write(data+bytesWritten);
 //	bytesWritten += extSST_.Write(data+bytesWritten);
-	
+
 	bytesWritten += eof_.Write(data+bytesWritten);
 
 	return bytesWritten;
 }
-size_t Workbook::DataSize() 
+size_t Workbook::DataSize()
 {
 	size_t size = 0;
 	size += bof_.RecordSize();
@@ -2866,7 +2867,7 @@ size_t Workbook::DataSize()
 
 	size_t maxFonts = fonts_.size();
 	{for (size_t i=0; i<maxFonts; ++i) {size += fonts_[i].RecordSize();}}
-	
+
 	size_t maxXFs = XFs_.size();
 	{for (size_t i=0; i<maxXFs; ++i) {size += XFs_[i].RecordSize();}}
 
@@ -2879,13 +2880,13 @@ size_t Workbook::DataSize()
 	size += sst_.RecordSize();
 //	size += extSST_.RecordSize();
 	size += eof_.RecordSize();
-	return size;	
+	return size;
 }
 size_t Workbook::RecordSize() {return DataSize();}
 /************************************************************************************************************/
 
 /************************************************************************************************************/
-Workbook::Window1::Window1() : Record(), 
+Workbook::Window1::Window1() : Record(),
 	horizontalPos_(0x78), verticalPos_(0x78), width_(0x3B1F), height_(0x2454),
 	options_(0x38), activeWorksheetIndex_(0), firstVisibleTabIndex_(0), selectedWorksheetNo_(1),
 	worksheetTabBarWidth_(0x258) {code_ = CODE::WINDOW1; dataSize_ = 18; recordSize_ = 22;}
@@ -2920,11 +2921,11 @@ size_t Workbook::Window1::Write(char* data)
 /************************************************************************************************************/
 
 /************************************************************************************************************/
-Workbook::Font::Font() : Record(), 
+Workbook::Font::Font() : Record(),
 	height_(200), options_(0), colourIndex_(0x7FFF), weight_(400), escapementType_(0),
 	underlineType_(0), family_(0), characterSet_(0), unused_(0)
 {
-	code_ = CODE::FONT; 
+	code_ = CODE::FONT;
 	dataSize_ = 14;
 	recordSize_ = 18;
 	name_ = L"Arial";
@@ -2965,10 +2966,10 @@ size_t Workbook::Font::RecordSize() {return (recordSize_ = DataSize()+4);}
 /************************************************************************************************************/
 
 /************************************************************************************************************/
-Workbook::XF::XF() : Record(), 
+Workbook::XF::XF() : Record(),
 	fontRecordIndex_(0), formatRecordIndex_(0), protectionType_(0xFFF5), alignment_(0x20), rotation_(0x00),
-	textProperties_(0x00), usedAttributes_(0x00), borderLines_(0x0000), colour1_(0x0000), colour2_(0x20C0) 
-	{code_ = CODE::XF; dataSize_ = 20; recordSize_ = 24;}	
+	textProperties_(0x00), usedAttributes_(0x00), borderLines_(0x0000), colour1_(0x0000), colour2_(0x20C0)
+	{code_ = CODE::XF; dataSize_ = 20; recordSize_ = 24;}
 size_t Workbook::XF::Read(const char* data)
 {
 	Record::Read(data);
@@ -2983,7 +2984,7 @@ size_t Workbook::XF::Read(const char* data)
 	LittleEndian::Read(data_, colour1_, 14, 4);
 	LittleEndian::Read(data_, colour2_, 18, 2);
 	return RecordSize();
-}	
+}
 size_t Workbook::XF::Write(char* data)
 {
 	data_.resize(dataSize_);
@@ -3003,7 +3004,7 @@ size_t Workbook::XF::Write(char* data)
 
 /************************************************************************************************************/
 Workbook::Style::Style() : Record(),
-	XFRecordIndex_(0x8000), identifier_(0), level_(0xFF) 
+	XFRecordIndex_(0x8000), identifier_(0), level_(0xFF)
 	{code_ = CODE::STYLE; dataSize_ = 2; recordSize_ = 6;}
 size_t Workbook::Style::Read(const char* data)
 {
@@ -3021,7 +3022,7 @@ size_t Workbook::Style::Read(const char* data)
 		name_.Read(&*(data_.begin())+2);
 	}
 	return RecordSize();
-}	
+}
 size_t Workbook::Style::Write(char* data)
 {
 	data_.resize(DataSize());
@@ -3045,14 +3046,14 @@ size_t Workbook::Style::RecordSize() {return (recordSize_ = DataSize()+4);}
 
 /************************************************************************************************************/
 Workbook::BoundSheet::BoundSheet() : Record(),
-	BOFpos_(0x0000), visibility_(0), type_(0) 
+	BOFpos_(0x0000), visibility_(0), type_(0)
 {
-	code_ = CODE::BOUNDSHEET; 
+	code_ = CODE::BOUNDSHEET;
 	dataSize_ = 6;
 	dataSize_ = 10;
 	name_ = "Sheet1";
 	name_.unicode_ = false;
-}	
+}
 size_t Workbook::BoundSheet::Read(const char* data)
 {
 	Record::Read(data);
@@ -3061,7 +3062,7 @@ size_t Workbook::BoundSheet::Read(const char* data)
 	LittleEndian::Read(data_, type_, 5, 1);
 	name_.Read(&*(data_.begin())+6);
 	return RecordSize();
-}	
+}
 size_t Workbook::BoundSheet::Write(char* data)
 {
 	data_.resize(DataSize());
@@ -3085,7 +3086,7 @@ size_t Workbook::SharedStringTable::Read(const char* data)
 	LittleEndian::Read(data_, uniqueStringsTotal_, 4, 4);
 	strings_.clear();
 	strings_.resize(uniqueStringsTotal_);
-	
+
 	size_t npos = 8;
 	if (continueIndices_.empty())
 	{
@@ -3118,7 +3119,7 @@ size_t Workbook::SharedStringTable::Read(const char* data)
 
 				int size = continueIndices_[c] - npos - 1 - bytesRead;
 				++c;
-				if (size > 0) 
+				if (size > 0)
 				{
 					size /= multiplier;	// Number of characters available for string in current record.
 					bytesRead += strings_[i].ContinueRead(&*(data_.begin())+npos+bytesRead, size);
@@ -3141,7 +3142,7 @@ size_t Workbook::SharedStringTable::Read(const char* data)
 		}
 	}
 	return npos + 4*(npos/8224 + 1);
-}	
+}
 size_t Workbook::SharedStringTable::Write(char* data)
 {
 	data_.resize(DataSize());
@@ -3164,7 +3165,7 @@ size_t Workbook::SharedStringTable::Write(char* data)
 	}
 	return Record::Write(data);
 }
-size_t Workbook::SharedStringTable::DataSize() 
+size_t Workbook::SharedStringTable::DataSize()
 {
 	dataSize_ = 8;
 	continueIndices_.clear();
@@ -3252,8 +3253,8 @@ size_t Workbook::SharedStringTable::DataSize()
 						dataSize_ += stringSize + 1;
 					}
 				}
-			}			
-		}		
+			}
+		}
 	}
 	return dataSize_;
 }
@@ -3264,10 +3265,10 @@ size_t Workbook::SharedStringTable::RecordSize()
 }
 /************************************************************************************************************/
 Workbook::ExtSST::ExtSST() : Record(),
-	stringsTotal_(0), streamPos_(0), firstStringPos_(0), unused_(0) 
+	stringsTotal_(0), streamPos_(0), firstStringPos_(0), unused_(0)
 {
-	code_ = CODE::EXTSST; 
-	dataSize_ = 2; 
+	code_ = CODE::EXTSST;
+	dataSize_ = 2;
 	recordSize_ = 6;
 }
 
@@ -3294,7 +3295,7 @@ size_t Workbook::ExtSST::Read(const char* data)
 	return RecordSize();
 }
 
-size_t Workbook::ExtSST::Write(char* data) 
+size_t Workbook::ExtSST::Write(char* data)
 {
 	data_.resize(DataSize());
 	LittleEndian::Write(data_, stringsTotal_, 0, 2);
@@ -3345,20 +3346,20 @@ size_t Worksheet::Read(const char* data)
 		{
 			case CODE::BOF:
 				bytesRead += bof_.Read(data+bytesRead);
-				break;				
-				
+				break;
+
 			case CODE::INDEX:
 				bytesRead += index_.Read(data+bytesRead);
 				break;
-				
+
 			case CODE::DIMENSIONS:
 				bytesRead += dimensions_.Read(data+bytesRead);
 				break;
-				
+
 			case CODE::ROW:
 				bytesRead += cellTable_.Read(data+bytesRead);
 				break;
-				
+
 			case CODE::WINDOW2:
 				bytesRead += window2_.Read(data+bytesRead);
 				break;
@@ -3378,18 +3379,18 @@ size_t Worksheet::Write(char* data)
 	bytesWritten += bof_.Write(data+bytesWritten);
 
 	bytesWritten += index_.Write(data+bytesWritten);
-	
+
 	bytesWritten += dimensions_.Write(data+bytesWritten);
-	
+
 	bytesWritten += cellTable_.Write(data+bytesWritten);
 
 	bytesWritten += window2_.Write(data+bytesWritten);
-	
+
 	bytesWritten += eof_.Write(data+bytesWritten);
 
 	return bytesWritten;
 }
-size_t Worksheet::DataSize() 
+size_t Worksheet::DataSize()
 {
 	size_t dataSize = 0;
 	dataSize += bof_.RecordSize();
@@ -3398,13 +3399,13 @@ size_t Worksheet::DataSize()
 	dataSize += cellTable_.RecordSize();
 	dataSize += window2_.RecordSize();
 	dataSize += eof_.RecordSize();
-	return dataSize;	
+	return dataSize;
 }
 size_t Worksheet::RecordSize() {return DataSize();}
 /************************************************************************************************************/
 
 /************************************************************************************************************/
-Worksheet::Index::Index() : Record(), 
+Worksheet::Index::Index() : Record(),
 	unused1_(0), firstUsedRowIndex_(0), firstUnusedRowIndex_(0), unused2_(0)
 	{code_ = CODE::INDEX; dataSize_ = 16; recordSize_ = 20; DBCellPos_.resize(1);}
 size_t Worksheet::Index::Read(const char* data)
@@ -3425,7 +3426,7 @@ size_t Worksheet::Index::Read(const char* data)
 		}
 	}
 	return RecordSize();
-}	
+}
 size_t Worksheet::Index::Write(char* data)
 {
 	data_.resize(DataSize());
@@ -3441,7 +3442,7 @@ size_t Worksheet::Index::Write(char* data)
 	return Record::Write(data);
 }
 size_t Worksheet::Index::DataSize() {return (dataSize_ = 16 + DBCellPos_.size()*4);}
-size_t Worksheet::Index::RecordSize() 
+size_t Worksheet::Index::RecordSize()
 {
 	size_t dataSize = DataSize();
 	return (recordSize_ = dataSize + 4*(dataSize/8224 + 1));
@@ -3451,7 +3452,7 @@ size_t Worksheet::Index::RecordSize()
 
 /************************************************************************************************************/
 Worksheet::Dimensions::Dimensions() : Record(),
-	firstUsedRowIndex_(0), lastUsedRowIndexPlusOne_(0), 
+	firstUsedRowIndex_(0), lastUsedRowIndexPlusOne_(0),
 	firstUsedColIndex_(0), lastUsedColIndexPlusOne_(0),
 	unused_(0) {code_ = CODE::DIMENSIONS; dataSize_ = 14; recordSize_ = 18;}
 size_t Worksheet::Dimensions::Read(const char* data)
@@ -3463,7 +3464,7 @@ size_t Worksheet::Dimensions::Read(const char* data)
 	LittleEndian::Read(data_, lastUsedColIndexPlusOne_, 10, 2);
 	LittleEndian::Read(data_, unused_, 12, 2);
 	return RecordSize();
-}	
+}
 size_t Worksheet::Dimensions::Write(char* data)
 {
 	data_.resize(DataSize());
@@ -3477,7 +3478,7 @@ size_t Worksheet::Dimensions::Write(char* data)
 /************************************************************************************************************/
 
 /************************************************************************************************************/
-Worksheet::CellTable::RowBlock::CellBlock::Blank::Blank() : Record(), 
+Worksheet::CellTable::RowBlock::CellBlock::Blank::Blank() : Record(),
 	rowIndex_(0), colIndex_(0), XFRecordIndex_(0) {code_ = CODE::BLANK; dataSize_ = 6; recordSize_ = 10;}
 size_t Worksheet::CellTable::RowBlock::CellBlock::Blank::Read(const char* data)
 {
@@ -3486,7 +3487,7 @@ size_t Worksheet::CellTable::RowBlock::CellBlock::Blank::Read(const char* data)
 	LittleEndian::Read(data_, colIndex_, 2, 2);
 	LittleEndian::Read(data_, XFRecordIndex_, 4, 2);
 	return RecordSize();
-}	
+}
 size_t Worksheet::CellTable::RowBlock::CellBlock::Blank::Write(char* data)
 {
 	data_.resize(DataSize());
@@ -3508,7 +3509,7 @@ size_t Worksheet::CellTable::RowBlock::CellBlock::BoolErr::Read(const char* data
 	LittleEndian::Read(data_, value_, 6, 1);
 	LittleEndian::Read(data_, error_, 7, 1);
 	return RecordSize();
-}	
+}
 size_t Worksheet::CellTable::RowBlock::CellBlock::BoolErr::Write(char* data)
 {
 	data_.resize(DataSize());
@@ -3531,7 +3532,7 @@ size_t Worksheet::CellTable::RowBlock::CellBlock::LabelSST::Read(const char* dat
 	LittleEndian::Read(data_, XFRecordIndex_, 4, 2);
 	LittleEndian::Read(data_, SSTRecordIndex_, 6, 4);
 	return RecordSize();
-}	
+}
 size_t Worksheet::CellTable::RowBlock::CellBlock::LabelSST::Write(char* data)
 {
 	data_.resize(DataSize());
@@ -3551,15 +3552,15 @@ size_t Worksheet::CellTable::RowBlock::CellBlock::MulBlank::Read(const char* dat
 	LittleEndian::Read(data_, rowIndex_, 0, 2);
 	LittleEndian::Read(data_, firstColIndex_, 2, 2);
 	LittleEndian::Read(data_, lastColIndex_, dataSize_-2, 2);
-	size_t nc = lastColIndex_ - firstColIndex_ + 1; 
+	size_t nc = lastColIndex_ - firstColIndex_ + 1;
 	XFRecordIndices_.clear();
 	XFRecordIndices_.resize(nc);
 	for (size_t i=0; i<nc; ++i)
 	{
-		LittleEndian::Read(data_, XFRecordIndices_[i], 4+i*2, 2);	
+		LittleEndian::Read(data_, XFRecordIndices_[i], 4+i*2, 2);
 	}
 	return RecordSize();
-}	
+}
 size_t Worksheet::CellTable::RowBlock::CellBlock::MulBlank::Write(char* data)
 {
 	data_.resize(DataSize());
@@ -3569,12 +3570,12 @@ size_t Worksheet::CellTable::RowBlock::CellBlock::MulBlank::Write(char* data)
 	size_t nc = XFRecordIndices_.size();
 	for (size_t i=0; i<nc; ++i)
 	{
-		LittleEndian::Write(data_, XFRecordIndices_[i], 4+i*2, 2);	
+		LittleEndian::Write(data_, XFRecordIndices_[i], 4+i*2, 2);
 	}
 	return Record::Write(data);
 }
 size_t Worksheet::CellTable::RowBlock::CellBlock::MulBlank::DataSize() {return (dataSize_ = 6 + XFRecordIndices_.size()*2);}
-size_t Worksheet::CellTable::RowBlock::CellBlock::MulBlank::RecordSize() 
+size_t Worksheet::CellTable::RowBlock::CellBlock::MulBlank::RecordSize()
 {
 	size_t dataSize = DataSize();
 	return (recordSize_ = dataSize + 4*(dataSize/8224 + 1));
@@ -3586,7 +3587,7 @@ void Worksheet::CellTable::RowBlock::CellBlock::MulRK::XFRK::Read(const char* da
 {
 	LittleEndian::Read(data, XFRecordIndex_, 0, 2);
 	LittleEndian::Read(data, RKValue_, 2, 4);
-}	
+}
 void Worksheet::CellTable::RowBlock::CellBlock::MulRK::XFRK::Write(char* data)
 {
 	LittleEndian::Write(data, XFRecordIndex_, 0, 2);
@@ -3601,7 +3602,7 @@ size_t Worksheet::CellTable::RowBlock::CellBlock::MulRK::Read(const char* data)
 	LittleEndian::Read(data_, rowIndex_, 0, 2);
 	LittleEndian::Read(data_, firstColIndex_, 2, 2);
 	LittleEndian::Read(data_, lastColIndex_, dataSize_-2, 2);
-	size_t nc = lastColIndex_ - firstColIndex_ + 1; 
+	size_t nc = lastColIndex_ - firstColIndex_ + 1;
 	XFRK_.clear();
 	XFRK_.resize(nc);
 	for (size_t i=0; i<nc; ++i)
@@ -3609,7 +3610,7 @@ size_t Worksheet::CellTable::RowBlock::CellBlock::MulRK::Read(const char* data)
 		XFRK_[i].Read(&*(data_.begin())+4+i*6);
 	}
 	return RecordSize();
-}	
+}
 size_t Worksheet::CellTable::RowBlock::CellBlock::MulRK::Write(char* data)
 {
 	data_.resize(DataSize());
@@ -3624,7 +3625,7 @@ size_t Worksheet::CellTable::RowBlock::CellBlock::MulRK::Write(char* data)
 	return Record::Write(data);
 }
 size_t Worksheet::CellTable::RowBlock::CellBlock::MulRK::DataSize() {return (dataSize_ = 6 + XFRK_.size()*6);}
-size_t Worksheet::CellTable::RowBlock::CellBlock::MulRK::RecordSize() 
+size_t Worksheet::CellTable::RowBlock::CellBlock::MulRK::RecordSize()
 {
 	size_t dataSize = DataSize();
 	return (recordSize_ = dataSize + 4*(dataSize/8224 + 1));
@@ -3643,7 +3644,7 @@ size_t Worksheet::CellTable::RowBlock::CellBlock::Number::Read(const char* data)
 	intdouble_.intvalue_ = value;
 	value_ = intdouble_.doublevalue_;
 	return RecordSize();
-}	
+}
 size_t Worksheet::CellTable::RowBlock::CellBlock::Number::Write(char* data)
 {
 	data_.resize(DataSize());
@@ -3666,7 +3667,7 @@ size_t Worksheet::CellTable::RowBlock::CellBlock::RK::Read(const char* data)
 	LittleEndian::Read(data_, XFRecordIndex_, 4, 2);
 	LittleEndian::Read(data_, value_, 6, 4);
 	return RecordSize();
-}	
+}
 size_t Worksheet::CellTable::RowBlock::CellBlock::RK::Write(char* data)
 {
 	data_.resize(DataSize());
@@ -3703,20 +3704,20 @@ size_t Worksheet::CellTable::RowBlock::CellBlock::Formula::Read(const char* data
 			array_.Read(data+offset);
 			offset += array_.RecordSize();
 			break;
-			
-		case CODE::SHRFMLA:	
+
+		case CODE::SHRFMLA:
 			type_ = code;
 			shrfmla_.Read(data+offset);
 			offset += shrfmla_.RecordSize();
 			break;
-			
-		case CODE::SHRFMLA1:	
+
+		case CODE::SHRFMLA1:
 			type_ = code;
 			shrfmla1_.Read(data+offset);
 			offset += shrfmla1_.RecordSize();
 			break;
 
-		case CODE::TABLE:	
+		case CODE::TABLE:
 			type_ = code;
 			table_.Read(data+offset);
 			offset += table_.RecordSize();
@@ -3725,7 +3726,7 @@ size_t Worksheet::CellTable::RowBlock::CellBlock::Formula::Read(const char* data
 	LittleEndian::Read(data, code, offset, 2);
 	if (code == CODE::STRING) string_.Read(data+offset);
 	return RecordSize();
-}	
+}
 size_t Worksheet::CellTable::RowBlock::CellBlock::Formula::Write(char* data)
 {
 	data_.resize(DataSize());
@@ -3745,18 +3746,18 @@ size_t Worksheet::CellTable::RowBlock::CellBlock::Formula::Write(char* data)
 			array_.Write(data+offset);
 			offset += array_.RecordSize();
 			break;
-			
-		case CODE::SHRFMLA:	
+
+		case CODE::SHRFMLA:
 			shrfmla_.Write(data+offset);
 			offset += shrfmla_.RecordSize();
 			break;
-			
-		case CODE::SHRFMLA1:	
+
+		case CODE::SHRFMLA1:
 			shrfmla1_.Write(data+offset);
 			offset += shrfmla1_.RecordSize();
 			break;
 
-		case CODE::TABLE:	
+		case CODE::TABLE:
 			table_.Write(data+offset);
 			offset += table_.RecordSize();
 			break;
@@ -3765,26 +3766,26 @@ size_t Worksheet::CellTable::RowBlock::CellBlock::Formula::Write(char* data)
 	return RecordSize();
 }
 size_t Worksheet::CellTable::RowBlock::CellBlock::Formula::DataSize() {return (dataSize_ = 18 + RPNtoken_.size());}
-size_t Worksheet::CellTable::RowBlock::CellBlock::Formula::RecordSize() 
+size_t Worksheet::CellTable::RowBlock::CellBlock::Formula::RecordSize()
 {
 	size_t dataSize = DataSize();
 	recordSize_ = dataSize + 4*(dataSize/8224 + 1);
-	
+
 	switch (type_)
 	{
 		case CODE::ARRAY:
 			recordSize_ += array_.RecordSize();
 			break;
-			
-		case CODE::SHRFMLA:	
+
+		case CODE::SHRFMLA:
 			recordSize_ += shrfmla_.RecordSize();
 			break;
-			
-		case CODE::SHRFMLA1:	
+
+		case CODE::SHRFMLA1:
 			recordSize_ += shrfmla1_.RecordSize();
 			break;
 
-		case CODE::TABLE:	
+		case CODE::TABLE:
 			recordSize_ += table_.RecordSize();
 			break;
 	}
@@ -3809,7 +3810,7 @@ size_t Worksheet::CellTable::RowBlock::CellBlock::Formula::Array::Read(const cha
 	formula_.resize(dataSize_-12);
 	LittleEndian::ReadString(data_, &*(formula_.begin()), 12, dataSize_-12);
 	return RecordSize();
-}	
+}
 size_t Worksheet::CellTable::RowBlock::CellBlock::Formula::Array::Write(char* data)
 {
 	data_.resize(DataSize());
@@ -3823,7 +3824,7 @@ size_t Worksheet::CellTable::RowBlock::CellBlock::Formula::Array::Write(char* da
 	return Record::Write(data);
 }
 size_t Worksheet::CellTable::RowBlock::CellBlock::Formula::Array::DataSize() {return (dataSize_ = 12 + formula_.size());}
-size_t Worksheet::CellTable::RowBlock::CellBlock::Formula::Array::RecordSize() 
+size_t Worksheet::CellTable::RowBlock::CellBlock::Formula::Array::RecordSize()
 {
 	size_t dataSize = DataSize();
 	return (recordSize_ = dataSize + 4*(dataSize/8224 + 1));
@@ -3845,7 +3846,7 @@ size_t Worksheet::CellTable::RowBlock::CellBlock::Formula::ShrFmla::Read(const c
 	formula_.resize(dataSize_-8);
 	LittleEndian::ReadString(data_, &*(formula_.begin()), 8, dataSize_-8);
 	return RecordSize();
-}	
+}
 size_t Worksheet::CellTable::RowBlock::CellBlock::Formula::ShrFmla::Write(char* data)
 {
 	data_.resize(DataSize());
@@ -3858,7 +3859,7 @@ size_t Worksheet::CellTable::RowBlock::CellBlock::Formula::ShrFmla::Write(char* 
 	return Record::Write(data);
 }
 size_t Worksheet::CellTable::RowBlock::CellBlock::Formula::ShrFmla::DataSize() {return (dataSize_ = 8 + formula_.size());}
-size_t Worksheet::CellTable::RowBlock::CellBlock::Formula::ShrFmla::RecordSize() 
+size_t Worksheet::CellTable::RowBlock::CellBlock::Formula::ShrFmla::RecordSize()
 {
 	size_t dataSize = DataSize();
 	return (recordSize_ = dataSize + 4*(dataSize/8224 + 1));
@@ -3880,7 +3881,7 @@ size_t Worksheet::CellTable::RowBlock::CellBlock::Formula::ShrFmla1::Read(const 
 	formula_.resize(dataSize_-8);
 	LittleEndian::ReadString(data_, &*(formula_.begin()), 8, dataSize_-8);
 	return RecordSize();
-}	
+}
 size_t Worksheet::CellTable::RowBlock::CellBlock::Formula::ShrFmla1::Write(char* data)
 {
 	data_.resize(DataSize());
@@ -3893,15 +3894,15 @@ size_t Worksheet::CellTable::RowBlock::CellBlock::Formula::ShrFmla1::Write(char*
 	return Record::Write(data);
 }
 size_t Worksheet::CellTable::RowBlock::CellBlock::Formula::ShrFmla1::DataSize() {return (dataSize_ = 8 + formula_.size());}
-size_t Worksheet::CellTable::RowBlock::CellBlock::Formula::ShrFmla1::RecordSize() 
+size_t Worksheet::CellTable::RowBlock::CellBlock::Formula::ShrFmla1::RecordSize()
 {
 	size_t dataSize = DataSize();
 	return (recordSize_ = dataSize + 4*(dataSize/8224 + 1));
 }
 
 Worksheet::CellTable::RowBlock::CellBlock::Formula::Table::Table() : Record(),
-	firstRowIndex_(0), lastRowIndex_(0), firstColIndex_(0), lastColIndex_(0), options_(0), 
-	inputCellRowIndex_(0), inputCellColIndex_(0), 
+	firstRowIndex_(0), lastRowIndex_(0), firstColIndex_(0), lastColIndex_(0), options_(0),
+	inputCellRowIndex_(0), inputCellColIndex_(0),
 	inputCellColumnInputRowIndex_(0), inputCellColumnInputColIndex_(0)
 	{code_ = CODE::TABLE; dataSize_ = 16; recordSize_ = 20;}
 size_t Worksheet::CellTable::RowBlock::CellBlock::Formula::Table::Read(const char* data)
@@ -3917,7 +3918,7 @@ size_t Worksheet::CellTable::RowBlock::CellBlock::Formula::Table::Read(const cha
 	LittleEndian::Read(data_, inputCellColumnInputRowIndex_, 12, 2);
 	LittleEndian::Read(data_, inputCellColumnInputColIndex_, 14, 2);
 	return RecordSize();
-}	
+}
 size_t Worksheet::CellTable::RowBlock::CellBlock::Formula::Table::Write(char* data)
 {
 	data_.resize(DataSize());
@@ -3942,7 +3943,7 @@ size_t Worksheet::CellTable::RowBlock::CellBlock::Formula::String::Read(const ch
 	string_.resize(dataSize_);
 	LittleEndian::ReadString(data_, &*(string_.begin()), 0, dataSize_);
 	return RecordSize();
-}	
+}
 size_t Worksheet::CellTable::RowBlock::CellBlock::Formula::String::Write(char* data)
 {
 	data_.resize(DataSize());
@@ -3950,7 +3951,7 @@ size_t Worksheet::CellTable::RowBlock::CellBlock::Formula::String::Write(char* d
 	return Record::Write(data);
 }
 size_t Worksheet::CellTable::RowBlock::CellBlock::Formula::String::DataSize() {return (dataSize_ = string_.size());}
-size_t Worksheet::CellTable::RowBlock::CellBlock::Formula::String::RecordSize() 
+size_t Worksheet::CellTable::RowBlock::CellBlock::Formula::String::RecordSize()
 {
 	size_t dataSize = DataSize();
 	return (recordSize_ = dataSize + 4*(dataSize/8224 + 1));
@@ -3972,7 +3973,7 @@ size_t Worksheet::CellTable::RowBlock::Row::Read(const char* data)
 	LittleEndian::Read(data_, unused2_, 10, 2);
 	LittleEndian::Read(data_, options_, 12, 4);
 	return RecordSize();
-}	
+}
 size_t Worksheet::CellTable::RowBlock::Row::Write(char* data)
 {
 	data_.resize(DataSize());
@@ -3988,7 +3989,7 @@ size_t Worksheet::CellTable::RowBlock::Row::Write(char* data)
 /************************************************************************************************************/
 
 /************************************************************************************************************/
-Worksheet::CellTable::RowBlock::CellBlock::CellBlock() : 
+Worksheet::CellTable::RowBlock::CellBlock::CellBlock() :
 	type_(-1), normalType_(true) {};
 Worksheet::CellTable::RowBlock::CellBlock::~CellBlock() {};
 size_t Worksheet::CellTable::RowBlock::CellBlock::Read(const char* data)
@@ -4000,28 +4001,28 @@ size_t Worksheet::CellTable::RowBlock::CellBlock::Read(const char* data)
 		case CODE::BLANK:
 			bytesRead += blank_.Read(data);
 			break;
-			
-		case CODE::BOOLERR:	
+
+		case CODE::BOOLERR:
 			bytesRead += boolerr_.Read(data);
 			break;
-			
-		case CODE::LABELSST:	
+
+		case CODE::LABELSST:
 			bytesRead += labelsst_.Read(data);
 			break;
-			
-		case CODE::MULBLANK:	
+
+		case CODE::MULBLANK:
 			bytesRead += mulblank_.Read(data);
 			break;
-			
-		case CODE::MULRK:	
+
+		case CODE::MULRK:
 			bytesRead += mulrk_.Read(data);
 			break;
-			
-		case CODE::NUMBER:	
+
+		case CODE::NUMBER:
 			bytesRead += number_.Read(data);
 			break;
-			
-		case CODE::RK:	
+
+		case CODE::RK:
 			bytesRead += rk_.Read(data);
 			break;
 
@@ -4030,7 +4031,7 @@ size_t Worksheet::CellTable::RowBlock::CellBlock::Read(const char* data)
 			break;
 	}
 	return bytesRead;
-}	
+}
 size_t Worksheet::CellTable::RowBlock::CellBlock::Write(char* data)
 {
 	size_t bytesWritten = 0;
@@ -4039,28 +4040,28 @@ size_t Worksheet::CellTable::RowBlock::CellBlock::Write(char* data)
 		case CODE::BLANK:
 			bytesWritten += blank_.Write(data);
 			break;
-			
-		case CODE::BOOLERR:	
+
+		case CODE::BOOLERR:
 			bytesWritten += boolerr_.Write(data);
 			break;
-			
-		case CODE::LABELSST:	
+
+		case CODE::LABELSST:
 			bytesWritten += labelsst_.Write(data);
 			break;
-			
-		case CODE::MULBLANK:	
+
+		case CODE::MULBLANK:
 			bytesWritten += mulblank_.Write(data);
 			break;
-			
-		case CODE::MULRK:	
+
+		case CODE::MULRK:
 			bytesWritten += mulrk_.Write(data);
 			break;
-			
-		case CODE::NUMBER:	
+
+		case CODE::NUMBER:
 			bytesWritten += number_.Write(data);
 			break;
-			
-		case CODE::RK:	
+
+		case CODE::RK:
 			bytesWritten += rk_.Write(data);
 			break;
 
@@ -4076,23 +4077,23 @@ size_t Worksheet::CellTable::RowBlock::CellBlock::DataSize()
 	{
 		case CODE::BLANK:
 			return blank_.DataSize();
-			
-		case CODE::BOOLERR:	
+
+		case CODE::BOOLERR:
 			return boolerr_.DataSize();
-			
-		case CODE::LABELSST:	
+
+		case CODE::LABELSST:
 			return labelsst_.DataSize();
-			
-		case CODE::MULBLANK:	
+
+		case CODE::MULBLANK:
 			return mulblank_.DataSize();
-			
-		case CODE::MULRK:	
+
+		case CODE::MULRK:
 			return mulrk_.DataSize();
-			
-		case CODE::NUMBER:	
+
+		case CODE::NUMBER:
 			return number_.DataSize();
-			
-		case CODE::RK:	
+
+		case CODE::RK:
 			return rk_.DataSize();
 
 		case CODE::FORMULA:
@@ -4100,29 +4101,29 @@ size_t Worksheet::CellTable::RowBlock::CellBlock::DataSize()
 	}
 	abort();
 }
-size_t Worksheet::CellTable::RowBlock::CellBlock::RecordSize() 
+size_t Worksheet::CellTable::RowBlock::CellBlock::RecordSize()
 {
 	switch (type_)
 	{
 		case CODE::BLANK:
 			return blank_.RecordSize();
-			
-		case CODE::BOOLERR:	
+
+		case CODE::BOOLERR:
 			return boolerr_.RecordSize();
-			
-		case CODE::LABELSST:	
+
+		case CODE::LABELSST:
 			return labelsst_.RecordSize();
-			
-		case CODE::MULBLANK:	
+
+		case CODE::MULBLANK:
 			return mulblank_.RecordSize();
-			
-		case CODE::MULRK:	
+
+		case CODE::MULRK:
 			return mulrk_.RecordSize();
-			
-		case CODE::NUMBER:	
+
+		case CODE::NUMBER:
 			return number_.RecordSize();
-			
-		case CODE::RK:	
+
+		case CODE::RK:
 			return rk_.RecordSize();
 
 		case CODE::FORMULA:
@@ -4136,23 +4137,23 @@ short Worksheet::CellTable::RowBlock::CellBlock::RowIndex()
 	{
 		case CODE::BLANK:
 			return blank_.rowIndex_;
-			
-		case CODE::BOOLERR:	
+
+		case CODE::BOOLERR:
 			return boolerr_.rowIndex_;
-			
-		case CODE::LABELSST:	
+
+		case CODE::LABELSST:
 			return labelsst_.rowIndex_;
-			
-		case CODE::MULBLANK:	
+
+		case CODE::MULBLANK:
 			return mulblank_.rowIndex_;
-			
-		case CODE::MULRK:	
+
+		case CODE::MULRK:
 			return mulrk_.rowIndex_;
-			
-		case CODE::NUMBER:	
+
+		case CODE::NUMBER:
 			return number_.rowIndex_;
-			
-		case CODE::RK:	
+
+		case CODE::RK:
 			return rk_.rowIndex_;
 
 		case CODE::FORMULA:
@@ -4166,23 +4167,23 @@ short Worksheet::CellTable::RowBlock::CellBlock::ColIndex()
 	{
 		case CODE::BLANK:
 			return blank_.colIndex_;
-			
-		case CODE::BOOLERR:	
+
+		case CODE::BOOLERR:
 			return boolerr_.colIndex_;
-			
-		case CODE::LABELSST:	
+
+		case CODE::LABELSST:
 			return labelsst_.colIndex_;
-			
-		case CODE::MULBLANK:	
+
+		case CODE::MULBLANK:
 			return mulblank_.firstColIndex_;
-			
-		case CODE::MULRK:	
+
+		case CODE::MULRK:
 			return mulrk_.firstColIndex_;
-			
-		case CODE::NUMBER:	
+
+		case CODE::NUMBER:
 			return number_.colIndex_;
-			
-		case CODE::RK:	
+
+		case CODE::RK:
 			return rk_.colIndex_;
 
 		case CODE::FORMULA:
@@ -4208,7 +4209,7 @@ size_t Worksheet::CellTable::RowBlock::DBCell::Read(const char* data)
 		LittleEndian::Read(data_, offsets_[i], 4+i*2, 2);
 	}
 	return RecordSize();
-}	
+}
 size_t Worksheet::CellTable::RowBlock::DBCell::Write(char* data)
 {
 	data_.resize(DataSize());
@@ -4221,7 +4222,7 @@ size_t Worksheet::CellTable::RowBlock::DBCell::Write(char* data)
 	return Record::Write(data);
 }
 size_t Worksheet::CellTable::RowBlock::DBCell::DataSize() {return (dataSize_ = 4+offsets_.size()*2);}
-size_t Worksheet::CellTable::RowBlock::DBCell::RecordSize() 
+size_t Worksheet::CellTable::RowBlock::DBCell::RecordSize()
 {
 	size_t dataSize = DataSize();
 	return (recordSize_ = dataSize + 4*(dataSize/8224 + 1));
@@ -4245,7 +4246,7 @@ size_t Worksheet::CellTable::RowBlock::Read(const char* data)
 				rows_.push_back(row);
 				bytesRead += rows_.back().Read(data+bytesRead);
 				break;
-				
+
 			case CODE::BLANK:
 			case CODE::BOOLERR:
 			case CODE::LABELSST:
@@ -4262,41 +4263,41 @@ size_t Worksheet::CellTable::RowBlock::Read(const char* data)
 			default:
 				Record rec;
 				bytesRead += rec.Read(data+bytesRead);
-		}	
+		}
 		LittleEndian::Read(data, code, bytesRead, 2);
 	}
 	bytesRead += dbcell_.Read(data+bytesRead);
 	return bytesRead;
 }
 size_t Worksheet::CellTable::RowBlock::Write(char* data)
-{	
+{
 	size_t bytesWritten = 0;
 	size_t maxRows = rows_.size();
-	{for (size_t i=0; i<maxRows; ++i) 
+	{for (size_t i=0; i<maxRows; ++i)
 	{
 		bytesWritten += rows_[i].Write(data+bytesWritten);
 	}}
 
 	size_t maxCellBlocks = cellBlocks_.size();
-	{for (size_t i=0; i<maxCellBlocks; ++i) 
+	{for (size_t i=0; i<maxCellBlocks; ++i)
 	{
 		bytesWritten += cellBlocks_[i].Write(data+bytesWritten);
 	}}
-	
+
 	bytesWritten += dbcell_.Write(data+bytesWritten);
 	return bytesWritten;
 }
-size_t Worksheet::CellTable::RowBlock::DataSize() 
+size_t Worksheet::CellTable::RowBlock::DataSize()
 {
 	size_t dataSize = 0;
 	size_t maxRows = rows_.size();
 	{for (size_t i=0; i<maxRows; ++i) dataSize += rows_[i].RecordSize();}
-	
+
 	size_t maxCellBlocks = cellBlocks_.size();
 	{for (size_t i=0; i<maxCellBlocks; ++i) dataSize += cellBlocks_[i].RecordSize();}
-	
+
 	dataSize += dbcell_.RecordSize();
-	return dataSize;	
+	return dataSize;
 }
 size_t Worksheet::CellTable::RowBlock::RecordSize() {return DataSize();}
 /************************************************************************************************************/
@@ -4305,7 +4306,7 @@ size_t Worksheet::CellTable::RowBlock::RecordSize() {return DataSize();}
 size_t Worksheet::CellTable::Read(const char* data)
 {
 	size_t bytesRead = 0;
-	
+
 	short code;
 	LittleEndian::Read(data, code, 0, 2);
 	RowBlock rowBlock;
@@ -4319,21 +4320,21 @@ size_t Worksheet::CellTable::Read(const char* data)
 	return bytesRead;
 }
 size_t Worksheet::CellTable::Write(char* data)
-{	
+{
 	size_t bytesWritten = 0;
 	size_t maxRowBlocks_ = rowBlocks_.size();
-	for (size_t i=0; i<maxRowBlocks_; ++i) 
+	for (size_t i=0; i<maxRowBlocks_; ++i)
 	{
 		bytesWritten += rowBlocks_[i].Write(data+bytesWritten);
 	}
 	return bytesWritten;
 }
-size_t Worksheet::CellTable::DataSize() 
+size_t Worksheet::CellTable::DataSize()
 {
 	size_t dataSize = 0;
 	size_t maxRowBlocks_ = rowBlocks_.size();
 	for (size_t i=0; i<maxRowBlocks_; ++i) dataSize += rowBlocks_[i].RecordSize();
-	return dataSize;	
+	return dataSize;
 }
 size_t Worksheet::CellTable::RecordSize() {return DataSize();}
 /************************************************************************************************************/
@@ -4356,7 +4357,7 @@ size_t Worksheet::Window2::Read(const char* data)
 	LittleEndian::Read(data_, magnificationFactorNormalView_, 12, 2);
 	LittleEndian::Read(data_, unused2_, 14, 4);
 	return RecordSize();
-}	
+}
 size_t Worksheet::Window2::Write(char* data)
 {
 	data_.resize(DataSize());
@@ -4388,7 +4389,7 @@ bool IsRKValueADouble(int rkValue)
 // Convert a rk value to a double.
 double GetDoubleFromRKValue(int rkValue)
 {
-	union 
+	union
 	{
 		long long intvalue_;
 		double doublevalue_;
@@ -4414,7 +4415,7 @@ int GetIntegerFromRKValue(int rkValue)
 // Convert a double to a rk value.
 int GetRKValueFromDouble(double value)
 {
-	union 
+	union
 	{
 		long long intvalue_;
 		double doublevalue_;
@@ -4461,12 +4462,12 @@ bool CanStoreAsRKValue(double value)
 
 /************************************************************************************************************/
 BasicExcel::BasicExcel() {};
-BasicExcel::BasicExcel(const char* filename) 
+BasicExcel::BasicExcel(const char* filename)
 {
 	Load(filename);
 }
 
-BasicExcel::~BasicExcel() 
+BasicExcel::~BasicExcel()
 {
 	if (file_.IsOpen()) file_.Close();
 }
@@ -4513,7 +4514,7 @@ bool BasicExcel::Save()
 		// Prepare Raw Worksheets for saving.
 		UpdateWorksheets();
 
-		AdjustStreamPositions();	
+		AdjustStreamPositions();
 
 		// Calculate bytes needed for a workbook.
 		size_t minBytes = workbook_.RecordSize();
@@ -4522,7 +4523,7 @@ bool BasicExcel::Save()
 		{
 			minBytes += worksheets_[i].RecordSize();
 		}
-		
+
 		// Create new workbook.
 		vector<char> data(minBytes,0);
 		Write(&*(data).begin());
@@ -4550,15 +4551,15 @@ size_t BasicExcel::GetTotalWorkSheets()
 	return worksheets_.size();
 }
 
-// Get a pointer to an Excel worksheet at the given index. 
-// Index starts from 0. 
+// Get a pointer to an Excel worksheet at the given index.
+// Index starts from 0.
 // Returns 0 if index is invalid.
 BasicExcelWorksheet* BasicExcel::GetWorksheet(size_t sheetIndex)
 {
 	return &(yesheets_[sheetIndex]);
 }
 
-// Get a pointer to an Excel worksheet that has given ANSI name. 
+// Get a pointer to an Excel worksheet that has given ANSI name.
 // Returns 0 if there is no Excel worksheet with the given name.
 BasicExcelWorksheet* BasicExcel::GetWorksheet(const char* name)
 {
@@ -4571,7 +4572,7 @@ BasicExcelWorksheet* BasicExcel::GetWorksheet(const char* name)
 	return 0;
 }
 
-// Get a pointer to an Excel worksheet that has given Unicode name. 
+// Get a pointer to an Excel worksheet that has given Unicode name.
 // Returns 0 if there is no Excel worksheet with the given name.
 BasicExcelWorksheet* BasicExcel::GetWorksheet(const wchar_t* name)
 {
@@ -4584,10 +4585,10 @@ BasicExcelWorksheet* BasicExcel::GetWorksheet(const wchar_t* name)
 	return 0;
 }
 
-// Add a new Excel worksheet to the given index. 
-// Name given to worksheet is SheetX, where X is a number which starts from 1. 
-// Index starts from 0. 
-// Worksheet is added to the last position if sheetIndex == -1. 
+// Add a new Excel worksheet to the given index.
+// Name given to worksheet is SheetX, where X is a number which starts from 1.
+// Index starts from 0.
+// Worksheet is added to the last position if sheetIndex == -1.
 // Returns a pointer to the worksheet if successful, 0 if otherwise.
 BasicExcelWorksheet* BasicExcel::AddWorksheet(int sheetIndex)
 {
@@ -4603,8 +4604,8 @@ BasicExcelWorksheet* BasicExcel::AddWorksheet(int sheetIndex)
 }
 
 // Add a new Excel worksheet with given ANSI name to the given index.
-// Index starts from 0. 
-// Worksheet is added to the last position if sheetIndex == -1. 
+// Index starts from 0.
+// Worksheet is added to the last position if sheetIndex == -1.
 // Returns a pointer to the worksheet if successful, 0 if otherwise.
 BasicExcelWorksheet* BasicExcel::AddWorksheet(const char* name, int sheetIndex)
 {
@@ -4872,19 +4873,19 @@ size_t BasicExcel::Read(const char* data, size_t dataSize)
 			case WORKBOOK_GLOBALS:
 				bytesRead += workbook_.Read(data+bytesRead);
 				break;
-				
+
 			case VISUAL_BASIC_MODULE:
 				bytesRead += rec.Read(data+bytesRead);
 				break;
-				
+
 			case WORKSHEET:
 				worksheets_.push_back(Worksheet());
 				bytesRead += worksheets_.back().Read(data+bytesRead);
 				break;
-				
+
 			case CHART:
 				bytesRead += rec.Read(data+bytesRead);
-				break;		
+				break;
 
 			default:
 				bytesRead += rec.Read(data+bytesRead);
@@ -4892,7 +4893,7 @@ size_t BasicExcel::Read(const char* data, size_t dataSize)
 		}
 		if (bytesRead < dataSize) LittleEndian::Read(data, code, bytesRead, 2);
 		else break;
-	} 
+	}
 	return bytesRead;
 }
 
@@ -4900,7 +4901,7 @@ size_t BasicExcel::Write(char* data)
 {
 	size_t bytesWritten = 0;
 	bytesWritten += workbook_.Write(data+bytesWritten);
-	
+
 	size_t maxWorkSheets = worksheets_.size();
 	for (size_t i=0; i<maxWorkSheets; ++i)
 	{
@@ -4936,14 +4937,14 @@ void BasicExcel::AdjustDBCellPositions()
 		offset += worksheets_[i].bof_.RecordSize();
 		offset += worksheets_[i].index_.RecordSize();
 		offset += worksheets_[i].dimensions_.RecordSize();
-		
+
 		size_t maxRowBlocks_ = worksheets_[i].cellTable_.rowBlocks_.size();
-		for (size_t j=0; j<maxRowBlocks_; ++j) 
+		for (size_t j=0; j<maxRowBlocks_; ++j)
 		{
 			size_t firstRowOffset = 0;
 
 			size_t maxRows = worksheets_[i].cellTable_.rowBlocks_[j].rows_.size();
-			{for (size_t k=0; k<maxRows; ++k) 
+			{for (size_t k=0; k<maxRows; ++k)
 			{
 				offset += worksheets_[i].cellTable_.rowBlocks_[j].rows_[k].RecordSize();
 				firstRowOffset += worksheets_[i].cellTable_.rowBlocks_[j].rows_[k].RecordSize();
@@ -4951,15 +4952,15 @@ void BasicExcel::AdjustDBCellPositions()
 			size_t cellOffset = firstRowOffset - 20; // a ROW record is 20 bytes long
 
 			size_t maxCellBlocks = worksheets_[i].cellTable_.rowBlocks_[j].cellBlocks_.size();
-			{for (size_t k=0; k<maxCellBlocks; ++k) 
+			{for (size_t k=0; k<maxCellBlocks; ++k)
 			{
 				offset += worksheets_[i].cellTable_.rowBlocks_[j].cellBlocks_[k].RecordSize();
 				firstRowOffset += worksheets_[i].cellTable_.rowBlocks_[j].cellBlocks_[k].RecordSize();
 			}}
 
 			// Adjust Index DBCellPos_ absolute offset
-			worksheets_[i].index_.DBCellPos_[j] = offset; 
-			
+			worksheets_[i].index_.DBCellPos_[j] = offset;
+
 			offset += worksheets_[i].cellTable_.rowBlocks_[j].dbcell_.RecordSize();
 
 			// Adjust DBCell first row offsets
@@ -4981,8 +4982,8 @@ void BasicExcel::AdjustDBCellPositions()
 				}
 				cellOffset = 0;
 			}}
-		}	
-		
+		}
+
 		offset += worksheets_[i].cellTable_.RecordSize();
 		offset += worksheets_[i].window2_.RecordSize();
 		offset += worksheets_[i].eof_.RecordSize();
@@ -4997,7 +4998,7 @@ void BasicExcel::AdjustExtSSTPositions()
 
 	size_t maxFonts = workbook_.fonts_.size();
 	{for (size_t i=0; i<maxFonts; ++i) {offset += workbook_.fonts_[i].RecordSize();}}
-	
+
 	size_t maxXFs = workbook_.XFs_.size();
 	{for (size_t i=0; i<maxXFs; ++i) {offset += workbook_.XFs_[i].RecordSize();}}
 
@@ -5007,7 +5008,7 @@ void BasicExcel::AdjustExtSSTPositions()
 	size_t maxBoundSheets = workbook_.boundSheets_.size();
 	{for (size_t i=0; i<maxBoundSheets; ++i) {offset += workbook_.boundSheets_[i].RecordSize();}}
 
-	workbook_.extSST_.stringsTotal_ = 10; 
+	workbook_.extSST_.stringsTotal_ = 10;
 	size_t maxPortions = workbook_.sst_.uniqueStringsTotal_ / workbook_.extSST_.stringsTotal_ +
 						(workbook_.sst_.uniqueStringsTotal_%workbook_.extSST_.stringsTotal_ ? 1 : 0);
 	workbook_.extSST_.streamPos_.resize(maxPortions);
@@ -5019,7 +5020,7 @@ void BasicExcel::AdjustExtSSTPositions()
 	{
 		workbook_.extSST_.streamPos_[i] = offset + 4 + relativeOffset;
 		workbook_.extSST_.firstStringPos_[i] = 4 + relativeOffset;
-		workbook_.extSST_.unused_[i] = 0;		
+		workbook_.extSST_.unused_[i] = 0;
 
 		for (size_t j=0; j<workbook_.extSST_.stringsTotal_; ++j)
 		{
@@ -5070,8 +5071,8 @@ void BasicExcel::AdjustExtSSTPositions()
 							relativeOffset += stringSize + 1;
 						}
 					}
-				}			
-			}		
+				}
+			}
 		}
 	}
 }
@@ -5107,7 +5108,7 @@ void BasicExcel::UpdateWorksheets()
 	// Reset worksheets and string table.
 	worksheets_.clear();
 	worksheets_.resize(maxWorksheets);
-	
+
 	workbook_.sst_.stringsTotal_ = 0;
 	workbook_.sst_.uniqueStringsTotal_ = 0;
 	workbook_.sst_.strings_.clear();
@@ -5137,10 +5138,10 @@ void BasicExcel::UpdateWorksheets()
 		rRowBlocks.resize(maxRows/32 + (maxRows%32 ? 1 : 0));
 		for (size_t r=0, curRowBlock=0; r<maxRows; ++r)
 		{
-			if (r%32==0) 
+			if (r%32==0)
 			{
 				// New row block for every 32 rows.
-				pCellBlocks = &(rRowBlocks[curRowBlock++].cellBlocks_);								
+				pCellBlocks = &(rRowBlocks[curRowBlock++].cellBlocks_);
 			}
 			bool newRow = true;	// Keep track whether current row contains data.
 			pCellBlocks->reserve(1000);
@@ -5149,11 +5150,11 @@ void BasicExcel::UpdateWorksheets()
 				BasicExcelCell* cell = yesheets_[s].Cell(r,c);
 				int cellType = cell->Type();
 				if (cellType != BasicExcelCell::UNDEFINED)	// Current cell contains some data
-				{		
-					if (worksheets_[s].index_.firstUsedRowIndex_ == 100000) 
+				{
+					if (worksheets_[s].index_.firstUsedRowIndex_ == 100000)
 					{
 						// Set firstUsedRowIndex.
-						worksheets_[s].index_.firstUsedRowIndex_ = r; 
+						worksheets_[s].index_.firstUsedRowIndex_ = r;
 						worksheets_[s].dimensions_.firstUsedRowIndex_ = r;
 
 						// Resize DBCellPos.
@@ -5266,11 +5267,11 @@ void BasicExcel::UpdateWorksheets()
 									pCell->rk_.value_ = GetRKValueFromDouble(cell->GetDouble());
 								}
 								else
-								{									
+								{
 									pCell->type_ = CODE::NUMBER;
 									pCell->number_.rowIndex_ = r;
 									pCell->number_.colIndex_ = c;
-									pCell->number_.value_ = cell->GetDouble();								
+									pCell->number_.value_ = cell->GetDouble();
 								}
 							}
 							break;
@@ -5283,7 +5284,7 @@ void BasicExcel::UpdateWorksheets()
 							pCell->normalType_ = true;
 							pCell->labelsst_.rowIndex_ = r;
 							pCell->labelsst_.colIndex_ = c;
-							
+
 							// Get cell string
 							vector<char> str(cell->GetStringLength()+1);
 							cell->Get(&*(str.begin()));
@@ -5359,10 +5360,10 @@ void BasicExcel::UpdateWorksheets()
 		}
 
 		// If worksheet has no data
-		if (worksheets_[s].index_.firstUsedRowIndex_ == 100000) 
+		if (worksheets_[s].index_.firstUsedRowIndex_ == 100000)
 		{
 			// Set firstUsedRowIndex.
-			worksheets_[s].index_.firstUsedRowIndex_ = 0; 
+			worksheets_[s].index_.firstUsedRowIndex_ = 0;
 			worksheets_[s].dimensions_.firstUsedRowIndex_ = 0;
 
 			// Resize DBCellPos.
@@ -5379,8 +5380,8 @@ void BasicExcel::UpdateWorksheets()
 /************************************************************************************************************/
 
 /************************************************************************************************************/
-BasicExcelWorksheet::BasicExcelWorksheet(BasicExcel* excel, size_t sheetIndex) : 
-	excel_(excel), sheetIndex_(sheetIndex) 
+BasicExcelWorksheet::BasicExcelWorksheet(BasicExcel* excel, size_t sheetIndex) :
+	excel_(excel), sheetIndex_(sheetIndex)
 {
 	UpdateCells();
 }
@@ -5535,7 +5536,7 @@ size_t BasicExcelWorksheet::GetTotalCols()
 // Return a pointer to an Excel cell.
 // row and col starts from 0.
 // Returns 0 if row exceeds 65535 or col exceeds 255.
-BasicExcelCell* BasicExcelWorksheet::Cell(size_t row, size_t col)	
+BasicExcelCell* BasicExcelWorksheet::Cell(size_t row, size_t col)
 {
 	// Check to ensure row and col does not exceed maximum allowable range for an Excel worksheet.
 	if (row>65535 || col>255) return 0;
@@ -5547,7 +5548,7 @@ BasicExcelCell* BasicExcelWorksheet::Cell(size_t row, size_t col)
 		maxCols_ = col + 1;
 		for (size_t i=0; i<maxRows_; ++i) cells_[i].resize(maxCols_);
 	}
-	if (row>=maxRows_) 
+	if (row>=maxRows_)
 	{
 		// Increase number of rows.
 		maxRows_ = row + 1;
@@ -5599,14 +5600,14 @@ void BasicExcelWorksheet::UpdateCells()
 			{
 				case CODE::BLANK:
 					break;
-			
+
 				case CODE::BOOLERR:
 					if (rCellBlocks[j].boolerr_.error_ == 0)
 					{
 						cells_[row][col].Set(rCellBlocks[j].boolerr_.value_);
 					}
 					break;
-					
+
 				case CODE::LABELSST:
 				{
 					vector<LargeString>& ss = excel_->workbook_.sst_.strings_;
@@ -5615,7 +5616,7 @@ void BasicExcelWorksheet::UpdateCells()
 						wstr = ss[rCellBlocks[j].labelsst_.SSTRecordIndex_].wname_;
 						wstr.resize(wstr.size()+1);
 						wstr.back() = L'\0';
-						cells_[row][col].Set(&*(wstr.begin()));						
+						cells_[row][col].Set(&*(wstr.begin()));
 					}
 					else
 					{
@@ -5627,9 +5628,9 @@ void BasicExcelWorksheet::UpdateCells()
 					break;
 				}
 
-				case CODE::MULBLANK:	
+				case CODE::MULBLANK:
 					break;
-					
+
 				case CODE::MULRK:
 				{
 					size_t maxCols = rCellBlocks[j].mulrk_.lastColIndex_ - rCellBlocks[j].mulrk_.firstColIndex_ + 1;
@@ -5678,13 +5679,13 @@ void BasicExcelWorksheet::UpdateCells()
 /************************************************************************************************************/
 BasicExcelCell::BasicExcelCell() : type_(UNDEFINED) {};
 
-// Get type of value stored in current Excel cell. 
+// Get type of value stored in current Excel cell.
 // Returns one of the enums.
 int BasicExcelCell::Type() const {return type_;}
 
 // Get an integer value.
 // Returns false if cell does not contain an integer or a double.
-bool BasicExcelCell::Get(int& val) const 
+bool BasicExcelCell::Get(int& val) const
 {
 	if (type_ == INT)
 	{
@@ -5701,7 +5702,7 @@ bool BasicExcelCell::Get(int& val) const
 
 // Get a double value.
 // Returns false if cell does not contain a double or an integer.
-bool BasicExcelCell::Get(double& val) const 
+bool BasicExcelCell::Get(double& val) const
 {
 	if (type_ == DOUBLE)
 	{
@@ -5718,7 +5719,7 @@ bool BasicExcelCell::Get(double& val) const
 
 // Get an ANSI string.
 // Returns false if cell does not contain an ANSI string.
-bool BasicExcelCell::Get(char* str) const 
+bool BasicExcelCell::Get(char* str) const
 {
 	if (type_ == STRING)
 	{
@@ -5731,7 +5732,7 @@ bool BasicExcelCell::Get(char* str) const
 
 // Get an Unicode string.
 // Returns false if cell does not contain an Unicode string.
-bool BasicExcelCell::Get(wchar_t* str) const 
+bool BasicExcelCell::Get(wchar_t* str) const
 {
 	if (type_ == WSTRING)
 	{
@@ -5786,45 +5787,45 @@ const wchar_t* BasicExcelCell::GetWString() const
 }
 
 // Set content of current Excel cell to an integer.
-void BasicExcelCell::Set(int val) 
+void BasicExcelCell::Set(int val)
 {
 	SetInteger(val);
 }
 
 // Set content of current Excel cell to a double.
-void BasicExcelCell::Set(double val) 
+void BasicExcelCell::Set(double val)
 {
 	SetDouble(val);
 }
 
 // Set content of current Excel cell to an ANSI string.
-void BasicExcelCell::Set(const char* str) 
+void BasicExcelCell::Set(const char* str)
 {
 	SetString(str);
 }
 
 // Set content of current Excel cell to an Unicode string.
-void BasicExcelCell::Set(const wchar_t* str)	
+void BasicExcelCell::Set(const wchar_t* str)
 {
 	SetWString(str);
 }
 
 // Set content of current Excel cell to an integer.
-void BasicExcelCell::SetInteger(int val) 
+void BasicExcelCell::SetInteger(int val)
 {
-	type_ = INT; 
+	type_ = INT;
 	ival_ = val;
 }
 
 // Set content of current Excel cell to a double.
-void BasicExcelCell::SetDouble(double val) 
+void BasicExcelCell::SetDouble(double val)
 {
-	type_ = DOUBLE; 
+	type_ = DOUBLE;
 	dval_ = val;
 }
 
 // Set content of current Excel cell to an ANSI string.
-void BasicExcelCell::SetString(const char* str) 
+void BasicExcelCell::SetString(const char* str)
 {
 	size_t length = strlen(str);
 	if (length > 0)
@@ -5838,7 +5839,7 @@ void BasicExcelCell::SetString(const char* str)
 }
 
 // Set content of current Excel cell to an Unicode string.
-void BasicExcelCell::SetWString(const wchar_t* str)	
+void BasicExcelCell::SetWString(const wchar_t* str)
 {
 	size_t length = wcslen(str);
 	if (length > 0)
